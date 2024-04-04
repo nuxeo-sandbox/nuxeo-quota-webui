@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<component name="nuxeo.quota.webui.operations">
+
+  <extension point="operations" target="org.nuxeo.ecm.core.operation.OperationServiceComponent">
+    <operation class="nuxeo.quota.webui.operations.QuotaGetStatsUpdaters"/>
+    <operation class="nuxeo.quota.webui.operations.QuotaGetStatus"/>
+    <operation class="nuxeo.quota.webui.operations.QuotaLaunchInitialComputation"/>
+  </extension>
+
+</component>

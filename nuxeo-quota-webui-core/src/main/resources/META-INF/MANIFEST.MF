@@ -1,0 +1,9 @@
+Bundle-ActivationPolicy: lazy
+Bundle-ClassPath: .
+Manifest-Version: 1.0
+Bundle-Vendor: nuxeo.quota.webui
+Bundle-Version: 1.0.0
+Bundle-Name: nuxeo-quota-webui-core
+Bundle-ManifestVersion: 2
+Bundle-SymbolicName: nuxeo.quota.webui.nuxeo-quota-webui-core;singleton=true
+Nuxeo-Component: OSGI-INF/operations-contrib.xml

@@ -1,0 +1,158 @@
+<!--
+(C) Copyright 2024 Hyland (http://hyland.com/) and contributors.
+Licensed under the Apache License, Version 2.0 (the 'License');
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+​
+    http://www.apache.org/licenses/LICENSE-2.0
+​
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an 'AS IS' BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+Contributors:
+  Thibaud Arguillere (thibarg)
+-->
+<dom-module id="nuxeo-quota-stats">
+  <template>
+    <style include="iron-flex iron-flex-alignment nuxeo-styles">
+      chart-pie {
+        height: 300px;
+      }
+    </style>
+
+    <nuxeo-operation id="quotasStatsOp" op="Quotas.GetStatistics" response="{{stats}}"></nuxeo-operation>
+
+    <nuxeo-card heading="Quota for '[[_getDocTitle(document)]]'">
+      <template is="dom-if" if="[[_hasDocument(document)]]">
+        <chart-pie values="[[_quotasChartData(analytics, 'values')]]"
+                    labels="[[_quotasChartData(analytics, 'labels')]]"
+                    options="[[_quotasChartOptions()]]">
+        </chart-pie>
+      </template>
+    </nuxeo-card>
+
+  </template>
+
+  <script>
+    Polymer({
+      is: 'nuxeo-quota-stats',
+      behaviors: [Nuxeo.LayoutBehavior],
+      properties: {
+        document: {
+          type: Object,
+          observer: "_documentChanged"
+        },
+        analytics: {
+          type: Object,
+          value: null
+        },
+        defaultChartOptions: {
+          type: Object,
+          value: {
+            legend: { display: false },
+            animation: false,
+            base: 0.0
+          }
+        },
+
+        colors: {
+          type: Array,
+          value: function () {
+            return [
+              '#3366cc', '#ff9900', '#dc3912', '#109618', '#990099', '#0099c6', '#dd4477', '#66aa00'
+            ];
+          }
+        }
+      },
+
+      _hasDocument: function(doc) {
+        if(doc && doc.uid) {
+          return true;
+        }
+
+        return false;
+      },
+
+      _getDefaultChartOptions: function() {
+        // Deep copy
+        let str = JSON.stringify(this.defaultChartOptions);
+        return JSON.parse(str);
+      },
+
+      _quotasChartOptions: function() {
+        let options = this._getDefaultChartOptions();
+        options.legend = {
+          display: true,
+          position: "right"
+        };
+        options.title = {
+          display: false
+        }
+        return options;
+      },
+
+      _getDocTitle: function(doc) {
+        if(!doc) {
+          return "...";
+        }
+
+        if(doc.path === "/") {
+          return "Root";
+        }
+
+        return doc.title;
+      },
+
+      _documentChanged: function(doc) {
+        if(doc) {
+          let op = this.$.quotasStatsOp;
+          op.params = {
+            documentRef: doc.uid
+          };
+          op.execute()
+            .then(function(result) {
+              /* See GetQuotaStatisticsOperation java code. We recevie sometuing like:
+ [
+  {
+    "label": "Live Documents Size:2.16 MBytes",
+    "data": 2261560
+  },
+  {
+    "label": "Trash Size:0 KBytes",
+    "data": 0
+  },
+  {
+    "label": "Archived Versions Size:0 KBytes",
+    "data": 0
+  }
+]
+*/
+              this.analytics = result;
+            }.bind(this))
+            .catch(function(err) {
+              alert("An error occured: " + err);
+            }.bind(this))
+        }
+      },
+
+      _quotasChartData: function(analytics, what) {
+
+        if(!analytics) {
+          return [];
+        }
+
+        if(what === "labels") {
+          // Just a quick format for fun
+          return analytics.map((obj) => obj.label.replace(" Size:", " (") + ")");
+        }
+
+        if(what === "values") {
+          return analytics.map((obj) => obj.data);
+        }
+      }
+    });
+  </script>
+</dom-module>
