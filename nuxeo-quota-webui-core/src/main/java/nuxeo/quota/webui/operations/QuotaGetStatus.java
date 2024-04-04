@@ -40,7 +40,7 @@ public class QuotaGetStatus {
 
     public static final String ID = "Quota.GetStatus";
 
-    public static final String NO_STATUS = "(N/A)";
+    public static final String NO_STATUS = "Not running";
 
     @Context
     protected CoreSession session;
