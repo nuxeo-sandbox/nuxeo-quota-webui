@@ -1,0 +1,99 @@
+<!--
+(C) Copyright 2024 Hyland (http://hyland.com/) and contributors.
+Licensed under the Apache License, Version 2.0 (the 'License');
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+​
+    http://www.apache.org/licenses/LICENSE-2.0
+​
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an 'AS IS' BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+Contributors:
+  Thibaud Arguillere (thibarg)
+-->
+<dom-module id="nuxeo-quota-admin-userws">
+  <template>
+    <style include="iron-flex iron-flex-alignment nuxeo-styles">
+      .actionCard {
+        border-width: 1px;
+        border-style: solid;
+        border-color: lightgray;
+      }
+    </style>
+
+    <nuxeo-operation id="quotasStatsOp" op="Quotas.GetStatistics" response="{{stats}}"></nuxeo-operation>
+
+    <nuxeo-card heading="[[i18n('adm.quota.activate')]]" class="actionCard">
+      <div class="layout horizontal flex">
+        <div class="layout vertical">
+          <label>[[i18n('adm.quota.set.personalworkspace')]]</label>
+          <paper-radio-group id="activateQuota" selected="{{activateQuota}}">
+            <paper-radio-button name="yes">Yes</paper-radio-button>
+            <paper-radio-button name="no">No</paper-radio-button>
+          </paper-radio-group>
+        </div>
+
+        <nuxeo-input id="quotaMaxSize"
+                     label="[[i18n('label.quota.maxSize')]]"
+                     type="number"
+                     value="{{maxValue}}"
+                     style="margin-left: 50px"
+                     disabled></nuxeo-input>
+
+        <nuxeo-select id="quotaUnit"
+                      label="Unit"
+                      selected="{{unit}}"
+                      options="[[units]]"
+                      style="margin-left: 25px"
+                      disabled>
+        </nuxeo-select>
+
+        <paper-button id="saveUserWSQuota" disabled class="secondary" style="margin-left: 50px" on-tap="_saveUserWSQuota">Save</nuxeo-button>
+      </div>
+
+    </nuxeo-card>
+
+  </template>
+
+  <script>
+    Polymer({
+      is: 'nuxeo-quota-admin-userws',
+      behaviors: [Nuxeo.LayoutBehavior],
+      properties: {
+        activateQuota: {
+          type: String,
+          observer: "_activateQuotaChanged"
+        },
+        maxValue: Number,
+        maxValueUnit: String,
+        unit: {
+          type: String,
+          value:"MB"
+        },
+        units: {
+          type: Array,
+          value: [
+            {id: "B", label: "Bytes"},
+            {id: "KB", label: "KB"},
+            {id: "MB", label: "MB"},
+            {id: "GB", label: "GB"},
+          ]
+        }
+      },
+
+      _activateQuotaChanged: function(value) {
+        this.$.saveUserWSQuota.disabled = value === "no";
+        this.$.quotaMaxSize.disabled = value === "no";
+        this.$.quotaUnit.disabled = value === "no";
+      },
+
+      _saveUserWSQuota: function(p1, p2, p3) {
+        alert("coucou - " + this.maxValue + " " + this.unit);
+      }
+    });
+  </script>
+</dom-module>

@@ -5,6 +5,7 @@
     <operation class="nuxeo.quota.webui.operations.QuotaGetStatsUpdaters"/>
     <operation class="nuxeo.quota.webui.operations.QuotaGetStatus"/>
     <operation class="nuxeo.quota.webui.operations.QuotaLaunchInitialComputation"/>
+    <operation class="nuxeo.quota.webui.operations.QuotaGetConfigurationAndInfo"/>
   </extension>
 
 </component>

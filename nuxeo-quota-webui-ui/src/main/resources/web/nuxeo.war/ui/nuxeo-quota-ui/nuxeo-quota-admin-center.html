@@ -16,6 +16,7 @@ Contributors:
   Thibaud Arguillere (thibarg)
 -->
 <link rel="import" href="nuxeo-quota-stats.html">
+<link rel="import" href="nuxeo-quota-admin-userws.html">
 <dom-module id="nuxeo-quota-admin-center">
   <template>
     <style include="iron-flex iron-flex-alignment nuxeo-styles">
@@ -41,16 +42,21 @@ Contributors:
       }
     </style>
 
+    <nuxeo-document id="rootDoc" doc-path="/" response="{{rootDoc}}" auto></nuxeo-document>
+
     <nuxeo-operation id="getStatsUpdatersOp" op="Quota.GetStatsUpdaters" auto response="{{updaters}}"></nuxeo-operation>
     <nuxeo-operation id="getStatusOp" op="Quota.GetStatus" auto response="{{status}}"></nuxeo-operation>
     <nuxeo-operation id="launchInitialComputationOp" op="Quota.LaunchInitialComputation"></nuxeo-operation>
 
-    <nuxeo-document id="rootDoc" doc-path="/" response="{{rootDoc}}" auto></nuxeo-document>
-
-    <nuxeo-card heading="Quotas/Statistics">
+    <nuxeo-card heading="[[i18n('adm.quota.statistics')]]">
+      <!-- Stats -->
       <nuxeo-quota-stats document="[[rootDoc]]"></nuxeo-quota-stats>
 
-      <nuxeo-card heading="Compute Initial Statistics" class="actionCard">
+      <!-- User Workspaces -->
+      <nuxeo-quota-admin-userws></nuxeo-quota-admin-userws>
+
+      <!-- Start stats -->
+      <nuxeo-card heading="[[i18n('adm.quota.compute.initial.statistics')]]" class="actionCard">
         <div class="layout horizontal">
           <template is="dom-if" if="[[_hasUpdatersInfo(updaters, status)]]">
             <dom-repeat items="{{updatersInfo}}">

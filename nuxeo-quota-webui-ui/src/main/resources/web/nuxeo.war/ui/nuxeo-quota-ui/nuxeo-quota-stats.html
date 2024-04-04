@@ -21,11 +21,17 @@ Contributors:
       chart-pie {
         height: 300px;
       }
+      
+      .actionCard {
+        border-width: 1px;
+        border-style: solid;
+        border-color: lightgray;
+      }
     </style>
 
     <nuxeo-operation id="quotasStatsOp" op="Quotas.GetStatistics" response="{{stats}}"></nuxeo-operation>
 
-    <nuxeo-card heading="Quota for '[[_getDocTitle(document)]]'">
+    <nuxeo-card heading="Quota for '[[_getDocTitle(document)]]'" class="actionCard">
       <template is="dom-if" if="[[_hasDocument(document)]]">
         <chart-pie values="[[_quotasChartData(analytics, 'values')]]"
                     labels="[[_quotasChartData(analytics, 'labels')]]"
