@@ -25,25 +25,36 @@ Contributors:
       }
     </style>
 
-    <nuxeo-operation id="quotasStatsOp" op="Quotas.GetStatistics" response="{{stats}}"></nuxeo-operation>
+    <nuxeo-operation id="quotaConfigOp" op="Quota.GetConfigurationAndInfo" auto response="{{quotaConfig}}"></nuxeo-operation>
+    <nuxeo-operation id="setOnUserWorkspacesOp" op="Quota.SetOnUserWorkspaces"></nuxeo-operation>
 
     <nuxeo-card heading="[[i18n('adm.quota.activate')]]" class="actionCard">
+<!--
+      maxQuotaSize: [[quotaConfig.maxQuotaSize]]<br/>
+      maxQuotaSizeStr: [[quotaConfig.maxQuotaSizeStr]]<br/>
+      hasWorkInProgress: [[quotaConfig.hasWorkInProgress]]<br/>
+      quotaSetOnUserWS: [[quotaConfig.quotaSetOnUserWS]]<br/>
+-->
       <div class="layout horizontal flex">
         <div class="layout vertical">
           <label>[[i18n('adm.quota.set.personalworkspace')]]</label>
           <paper-radio-group id="activateQuota" selected="{{activateQuota}}">
-            <paper-radio-button name="yes">Yes</paper-radio-button>
-            <paper-radio-button name="no">No</paper-radio-button>
+            <paper-radio-button name="yes">[[i18n('label.yes')]]</paper-radio-button>
+            <paper-radio-button name="no">[[i18n('label.no')]]</paper-radio-button>
           </paper-radio-group>
         </div>
 
-        <nuxeo-input id="quotaMaxSize"
-                     label="[[i18n('label.quota.maxSize')]]"
-                     type="number"
-                     value="{{maxValue}}"
-                     style="margin-left: 50px"
-                     disabled></nuxeo-input>
-
+        <div class="layout vertical" style="margin-left: 50px">
+          <nuxeo-input id="quotaMaxSize"
+                       label="[[i18n('label.quota.maxSize')]]"
+                       type="number"
+                       value="{{maxValue}}"
+                       disabled></nuxeo-input>
+          <div>
+            (Max: [[quotaConfig.maxQuotaSizeStr]])
+          </div>
+        </div>
+      
         <nuxeo-select id="quotaUnit"
                       label="Unit"
                       selected="{{unit}}"
@@ -51,7 +62,6 @@ Contributors:
                       style="margin-left: 25px"
                       disabled>
         </nuxeo-select>
-
         <paper-button id="saveUserWSQuota" disabled class="secondary" style="margin-left: 50px" on-tap="_saveUserWSQuota">Save</nuxeo-button>
       </div>
 
@@ -64,11 +74,18 @@ Contributors:
       is: 'nuxeo-quota-admin-userws',
       behaviors: [Nuxeo.LayoutBehavior],
       properties: {
+        quotaConfig: {
+          type: Object,
+          observer: "_quotaConfigChanged"
+        },
         activateQuota: {
           type: String,
           observer: "_activateQuotaChanged"
         },
-        maxValue: Number,
+        maxValue: {
+          type: Number,
+          observer: "_maxValueChanged"
+        },
         maxValueUnit: String,
         unit: {
           type: String,
@@ -85,14 +102,102 @@ Contributors:
         }
       },
 
+      _quotaConfigChanged: function(newValue) {
+        if(newValue) {
+          if(newValue.quotaSetOnUserWS) {
+            this.activateQuota = "yes";
+            this._formatBytes(newValue.quotaSetOnUserWS);
+          }
+        }
+      },
+
       _activateQuotaChanged: function(value) {
         this.$.saveUserWSQuota.disabled = value === "no";
         this.$.quotaMaxSize.disabled = value === "no";
         this.$.quotaUnit.disabled = value === "no";
+
+        if(value === "yes") {
+          this.$.saveUserWSQuota.disabled = this.maxValue <= 0;
+        }
       },
 
-      _saveUserWSQuota: function(p1, p2, p3) {
-        alert("coucou - " + this.maxValue + " " + this.unit);
+      _maxValueChanged: function(value) {
+        let disable = value <= 0;
+        if(this.$.saveUserWSQuota.disabled !== disable) {
+          this.$.saveUserWSQuota.disabled = disable;
+        }
+
+        let valueBytes = this._getValueBytes(value);
+        if(valueBytes > this.quotaConfig.maxQuotaSize) {
+          alert("Value can't be greater than " + this.quotaConfig.maxQuotaSizeStr);
+          this._formatBytes(this.quotaConfig.maxQuotaSize);
+        }
+      },
+
+      _saveUserWSQuota: function() {
+        if(this.activateQuota !== "yes") {
+          alert("Code is work in progress: Disabling quota on Userworksaces is not yet set");
+          return;
+        }
+
+        if(this.maxValue <= 0 || !this.unit) {
+          alert("Invalid value: " + this.maxValue + " " + this.unit);
+        } else {
+          if(confirm("Set max quota for User Workspaces to " + this.maxValue + " " + this.unit + "?")) {
+            let op = this.$.setOnUserWorkspacesOp;
+            op.params = {maxSize: this._getValueBytes() };
+            op.execute()
+              .then(function(result) {
+                this.fire('notify', { message: "Max quota on User Workspaces activated, work in progress." });
+              }.bind(this))
+              .catch(function(err) {
+                alert("An error occured: " + err);
+              })
+          }
+        }
+      },
+
+      _formatBytes: function(bytes) {
+        const marker = 1024;
+        const decimal = 2;
+        const kiloBytes = marker;
+        const megaBytes = marker * marker;
+        const gigaBytes = marker * marker * marker;
+
+        let value, unit;
+
+        if (bytes < kiloBytes) {
+          value = bytes;
+          unit = "B"
+        } else if (bytes < megaBytes) {
+          value = (bytes / kiloBytes).toFixed(decimal);
+          unit = "KB"
+        } else if (bytes < gigaBytes) {
+          value = (bytes / megaBytes).toFixed(decimal);
+          unit = "MB"
+        } else {
+          value = (bytes / gigaBytes).toFixed(decimal);
+          unit = "GB"
+        }
+
+        this.maxValue = value;
+        this.unit = unit;
+      },
+
+      _getValueBytes: function(value) {
+        if(!value) {
+          value = this.maxValue;
+        }
+        switch(this.unit) {
+          case "B":
+            return value;
+          case "KB":
+            return value * 1024;
+          case "MB":
+            return value * 1024 * 1024;
+          case "GB":
+            return value * 1024 * 1024 * 1024;
+        }
       }
     });
   </script>

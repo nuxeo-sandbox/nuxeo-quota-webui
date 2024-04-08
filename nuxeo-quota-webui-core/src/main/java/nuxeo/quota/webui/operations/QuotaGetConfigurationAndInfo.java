@@ -15,16 +15,14 @@
  *
  * Contributors:
  *     Thibaud Arguillere
- */package nuxeo.quota.webui.operations;
+ */
+package nuxeo.quota.webui.operations;
 
-import java.util.List;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.nuxeo.common.utils.SizeUtils;
-import org.nuxeo.ecm.automation.core.Constants;
 import org.nuxeo.ecm.automation.core.annotations.Context;
 import org.nuxeo.ecm.automation.core.annotations.Operation;
 import org.nuxeo.ecm.automation.core.annotations.OperationMethod;
@@ -35,7 +33,6 @@ import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.work.api.WorkManager;
 import org.nuxeo.ecm.core.work.api.WorkQueueMetrics;
 import org.nuxeo.ecm.quota.QuotaStatsService;
-import org.nuxeo.ecm.quota.QuotaStatsUpdater;
 import org.nuxeo.runtime.api.Framework;
 
 /**
@@ -44,8 +41,8 @@ import org.nuxeo.runtime.api.Framework;
 @Operation(id=QuotaGetConfigurationAndInfo.ID, category="Quotas", label="Quota: Get Configuration", description="Return the misc configuration settings")
 public class QuotaGetConfigurationAndInfo {
     
-    protected Log log = LogFactory.getLog(QuotaGetConfigurationAndInfo.class);
-
+    private static final Logger log = LogManager.getLogger(QuotaGetConfigurationAndInfo.class);
+        
     public static final String ID = "Quota.GetConfigurationAndInfo";
     
     public static final String QUOTA_MAX_SIZE_PROP = "nuxeo.quota.maxsize";

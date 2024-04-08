@@ -15,13 +15,13 @@
  *
  * Contributors:
  *     Thibaud Arguillere
- */package nuxeo.quota.webui.operations;
+ */
+package nuxeo.quota.webui.operations;
 
 import java.util.List;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.nuxeo.ecm.automation.core.Constants;
 import org.nuxeo.ecm.automation.core.annotations.Context;
 import org.nuxeo.ecm.automation.core.annotations.Operation;
 import org.nuxeo.ecm.automation.core.annotations.OperationMethod;
