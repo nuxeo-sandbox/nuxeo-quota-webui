@@ -8,7 +8,24 @@
 
 This plugin brings UI to nuxeo-quota. The nuxeo-quota plugin UI is deprecated (depending on JSF). This plugin takes what was done in JSF (via SEAM beans) and converted them to WebUI + operations.
 
-## . . .
+Basically:
+
+* Move the deprecated JSF code at `countQuotaStatsActions.java` (nuxeo-jsf-ui-lts/code/nuxeo-quota-web/src/main/java/org/nuxeo/ecm/quota/countQuotaStatsActions.java) to some operations (to get/set quota on User Workspaces, etc.)
+* Add the different polymer element required by the UI.
+
+## Usage
+
+#### "Quota / Statistics" Admin panel
+
+* Display pie-chart stats
+* Activate User Workspaces quota
+* Run counters for the first time, on existing (and current) repository
+
+[TBD: ScreenShot]
+
+#### New Tab at Container Leve
+
+[... TBD ...]
 
 
 ## Build and Install

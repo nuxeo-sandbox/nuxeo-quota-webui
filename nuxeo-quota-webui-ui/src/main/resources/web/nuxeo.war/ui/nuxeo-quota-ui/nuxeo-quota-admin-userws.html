@@ -29,12 +29,6 @@ Contributors:
     <nuxeo-operation id="setOnUserWorkspacesOp" op="Quota.SetOnUserWorkspaces"></nuxeo-operation>
 
     <nuxeo-card heading="[[i18n('adm.quota.activate')]]" class="actionCard">
-<!--
-      maxQuotaSize: [[quotaConfig.maxQuotaSize]]<br/>
-      maxQuotaSizeStr: [[quotaConfig.maxQuotaSizeStr]]<br/>
-      hasWorkInProgress: [[quotaConfig.hasWorkInProgress]]<br/>
-      quotaSetOnUserWS: [[quotaConfig.quotaSetOnUserWS]]<br/>
--->
       <div class="layout horizontal flex">
         <div class="layout vertical">
           <label>[[i18n('adm.quota.set.personalworkspace')]]</label>
@@ -62,7 +56,14 @@ Contributors:
                       style="margin-left: 25px"
                       disabled>
         </nuxeo-select>
-        <paper-button id="saveUserWSQuota" disabled class="secondary" style="margin-left: 50px" on-tap="_saveUserWSQuota">Save</nuxeo-button>
+
+        <div>
+          <paper-button id="saveUserWSQuota"
+                        disabled
+                        class="secondary"
+                        style="margin-left: 50px;"
+                        on-tap="_saveUserWSQuota">Save</nuxeo-button>
+        </div>
       </div>
 
     </nuxeo-card>
@@ -74,6 +75,12 @@ Contributors:
       is: 'nuxeo-quota-admin-userws',
       behaviors: [Nuxeo.LayoutBehavior],
       properties: {
+        /* See Quota.GetConfigurationAndInfo
+            quotaConfig.maxQuotaSize
+            quotaConfig.maxQuotaSizeStr
+            quotaConfig.hasWorkInProgress
+            quotaConfig.quotaSetOnUserWS
+        */
         quotaConfig: {
           type: Object,
           observer: "_quotaConfigChanged"
@@ -104,21 +111,26 @@ Contributors:
 
       _quotaConfigChanged: function(newValue) {
         if(newValue) {
-          if(newValue.quotaSetOnUserWS) {
+          if(newValue.quotaSetOnUserWS && newValue.quotaSetOnUserWS > 0) {
             this.activateQuota = "yes";
-            this._formatBytes(newValue.quotaSetOnUserWS);
+          } else {
+            this.activateQuota = "no";
           }
+          this._formatBytes(newValue.quotaSetOnUserWS);
         }
       },
 
       _activateQuotaChanged: function(value) {
-        this.$.saveUserWSQuota.disabled = value === "no";
+        
         this.$.quotaMaxSize.disabled = value === "no";
         this.$.quotaUnit.disabled = value === "no";
 
-        if(value === "yes") {
+        if(value === "yes" && (!this.maxValue || this.maxValue <= 0)) {
           this.$.saveUserWSQuota.disabled = this.maxValue <= 0;
+        } else {
+          this.$.saveUserWSQuota.disabled = false;
         }
+
       },
 
       _maxValueChanged: function(value) {
@@ -128,36 +140,52 @@ Contributors:
         }
 
         let valueBytes = this._getValueBytes(value);
-        if(valueBytes > this.quotaConfig.maxQuotaSize) {
+        if(this.quotaConfig && valueBytes > this.quotaConfig.maxQuotaSize) {
           alert("Value can't be greater than " + this.quotaConfig.maxQuotaSizeStr);
           this._formatBytes(this.quotaConfig.maxQuotaSize);
         }
       },
 
       _saveUserWSQuota: function() {
-        if(this.activateQuota !== "yes") {
-          alert("Code is work in progress: Disabling quota on Userworksaces is not yet set");
-          return;
+        let maxSizeBytes = null;
+        let msg;
+        if(this.activateQuota == "no") {
+          if(confirm("Disable quota on User Workspaces ?")) {
+            maxSizeBytes = -1;
+            msg = "Quota disbaled for User Workspaces.";
+          }
+        } else {
+          if(this.maxValue <= 0 || !this.unit) {
+            alert("Invalid value: <" + this.maxValue + " " + this.unit + ">");
+          } else {
+            if(confirm("Set max quota for User Workspaces to " + this.maxValue + " " + this.unit + "?")) {
+              maxSizeBytes = this._getValueBytes();
+              msg = "Max quota on User Workspaces activated, work in progress.";
+            }
+          }
         }
 
-        if(this.maxValue <= 0 || !this.unit) {
-          alert("Invalid value: " + this.maxValue + " " + this.unit);
-        } else {
-          if(confirm("Set max quota for User Workspaces to " + this.maxValue + " " + this.unit + "?")) {
-            let op = this.$.setOnUserWorkspacesOp;
-            op.params = {maxSize: this._getValueBytes() };
-            op.execute()
-              .then(function(result) {
-                this.fire('notify', { message: "Max quota on User Workspaces activated, work in progress." });
-              }.bind(this))
-              .catch(function(err) {
-                alert("An error occured: " + err);
-              })
-          }
+        if(maxSizeBytes) {
+          let op = this.$.setOnUserWorkspacesOp;
+              op.params = {maxSize: maxSizeBytes };
+              op.execute()
+                .then(function(result) {
+                  this.fire('notify', { message: msg });
+                }.bind(this))
+                .catch(function(err) {
+                  alert("An error occured: " + err);
+                })
         }
       },
 
       _formatBytes: function(bytes) {
+        if(!bytes || bytes <= 0) {
+          this.maxValue = 0;
+          this.unit = "MB";
+          return;
+        }
+
+
         const marker = 1024;
         const decimal = 2;
         const kiloBytes = marker;

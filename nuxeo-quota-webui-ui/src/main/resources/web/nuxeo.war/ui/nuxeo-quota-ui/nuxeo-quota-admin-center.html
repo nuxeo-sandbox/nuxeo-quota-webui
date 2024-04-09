@@ -40,6 +40,10 @@ Contributors:
         border-style: solid;
         border-color: lightgray;
       }
+
+      .info {
+        font-size: smaller;
+      }
     </style>
 
     <nuxeo-document id="rootDoc" doc-path="/" response="{{rootDoc}}" auto></nuxeo-document>
@@ -57,6 +61,9 @@ Contributors:
 
       <!-- Start stats -->
       <nuxeo-card heading="[[i18n('adm.quota.compute.initial.statistics')]]" class="actionCard">
+        <div class="info">
+          [[i18n('label.quota.admin.help')]]
+        </div>
         <div class="layout horizontal">
           <template is="dom-if" if="[[_hasUpdatersInfo(updaters, status)]]">
             <dom-repeat items="{{updatersInfo}}">

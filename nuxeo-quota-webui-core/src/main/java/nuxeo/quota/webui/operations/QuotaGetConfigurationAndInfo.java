@@ -91,6 +91,7 @@ public class QuotaGetConfigurationAndInfo {
         jsonObj.put("hasWorkInProgress", running);
         
         // Quota on UserWS (if any)
+        // (-1 if not set)
         jsonObj.put("quotaSetOnUserWS", quotaStatsService.getQuotaSetOnUserWorkspaces(session));
         
         return Blobs.createJSONBlob(jsonObj.toString());
