@@ -31,4 +31,20 @@ Contributors:
   </template>
 </nuxeo-slot-content>
 
-<!-- TBD: Slot for documents, Domain-Workspace and UserWorkspace-->
+<!-- Quota on some containers -->
+<!-- Contribution of element 'nuxeo-page-item' for slot 'DOCUMENT_VIEWS_ITEMS' -->
+<nuxeo-slot-content name="quotaOnContainer" slot="DOCUMENT_VIEWS_ITEMS" order="100">
+  <template>
+    <nuxeo-filter document="[[document]]" expression="document.isVersion &#x3D;&#x3D;&#x3D; false" type="Domain,Workspace" user=[[user]]">
+      <template>
+        <nuxeo-page-item label="adm.quota.statistics" name="quotaoncontainer"></nuxeo-page-item>
+      </template>
+    </nuxeo-filter>
+  </template>
+</nuxeo-slot-content>
+<!-- Contribution of element 'nuxeo-quota-for-document' for slot 'DOCUMENT_VIEWS_PAGES' -->
+<nuxeo-slot-content name="quotaOnContainer" slot="DOCUMENT_VIEWS_PAGES">
+  <template>
+    <nuxeo-quota-for-document document="[[document]]" name="quotaoncontainer"></nuxeo-quota-for-document>
+  </template>
+</nuxeo-slot-content>
