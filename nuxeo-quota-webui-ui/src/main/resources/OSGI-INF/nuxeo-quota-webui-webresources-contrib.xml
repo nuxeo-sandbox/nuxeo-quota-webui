@@ -2,9 +2,9 @@
 
 <component name="nuxeo.quota.webui.ui.resources.contrib">
 
-  <!-- <require>org.nuxeo.web.ui.resources</require> -->
   <require>org.nuxeo.web.ui.properties.contrib</require>
 
+  <!-- Load our element that displays tabs and all -->
   <extension target="org.nuxeo.ecm.platform.WebResources" point="resources">
     <resource name="nuxeo-quota-webui-ui.html" type="import" shrinkable="false">
       <uri>/ui/nuxeo-quota-ui/nuxeo-quota-webui-ui.html</uri>
@@ -17,6 +17,13 @@
         <resource>nuxeo-quota-webui-ui.html</resource>
       </resources>
     </bundle>
+  </extension>
+
+  <!-- Contribute the filter for the Quota tab on containers
+       This is used in the filter (see nuxeo-quota-webui-ui.html)
+  -->
+  <extension target="org.nuxeo.runtime.ConfigurationService" point="configuration">
+    <property name="org.nuxeo.web.ui.quota.containersfilter">${nuxeo.quota.containersfilter:=Domain,Workspace}</property>
   </extension>
 
 </component>

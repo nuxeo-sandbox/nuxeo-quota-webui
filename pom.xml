@@ -43,6 +43,11 @@
       </dependency>
       <dependency>
         <groupId>nuxeo.quota.webui</groupId>
+        <artifactId>nuxeo-quota-webui-ui</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>nuxeo.quota.webui</groupId>
         <artifactId>nuxeo-quota-webui-package</artifactId>
         <version>${project.version}</version>
       </dependency>

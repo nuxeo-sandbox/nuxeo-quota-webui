@@ -35,7 +35,7 @@ Contributors:
 <!-- Contribution of element 'nuxeo-page-item' for slot 'DOCUMENT_VIEWS_ITEMS' -->
 <nuxeo-slot-content name="quotaOnContainer" slot="DOCUMENT_VIEWS_ITEMS" order="100">
   <template>
-    <nuxeo-filter document="[[document]]" expression="document.isVersion &#x3D;&#x3D;&#x3D; false" type="Domain,Workspace" user=[[user]]">
+    <nuxeo-filter document="[[document]]" expression="!document.isVersion &amp;&amp; Nuxeo &amp;&amp; Nuxeo.UI &amp;&amp; Nuxeo.UI.config &amp;&amp; Nuxeo.UI.config.quota &amp;&amp; Nuxeo.UI.config.quota.containersfilter &amp;&amp; Nuxeo.UI.config.quota.containersfilter.indexOf(document.type) > -1" user=[[user]]">
       <template>
         <nuxeo-page-item label="adm.quota.statistics" name="quotaoncontainer"></nuxeo-page-item>
       </template>
