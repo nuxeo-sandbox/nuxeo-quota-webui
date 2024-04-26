@@ -14,7 +14,12 @@ limitations under the License.
 
 Contributors:
   Thibaud Arguillere (thibarg)
+
+TODO: As several parts are shared with nuxeo-quota-for-document, something should be
+      done to centralize the things (units, handling values, etc.). Some utilities
+      are centralized in QuotaBehavior, like units, formating bytes, ...
 -->
+<link rel="import" href="nuxeo-quota-behavior.html">
 <dom-module id="nuxeo-quota-admin-userws">
   <template>
     <style include="iron-flex iron-flex-alignment nuxeo-styles">
@@ -39,10 +44,10 @@ Contributors:
         </div>
 
         <div class="layout vertical" style="margin-left: 50px">
-          <nuxeo-input id="quotaMaxSize"
+          <nuxeo-input id="quotaValueObj"
                        label="[[i18n('label.quota.maxSize')]]"
                        type="number"
-                       value="{{maxValue}}"
+                       value="{{quotaValue}}"
                        disabled></nuxeo-input>
           <div>
             (Max: [[quotaConfig.maxQuotaSizeStr]])
@@ -51,8 +56,8 @@ Contributors:
       
         <nuxeo-select id="quotaUnit"
                       label="Unit"
-                      selected="{{unit}}"
-                      options="[[units]]"
+                      selected="{{quotaUnit}}"
+                      options="[[_getUnits()]]"
                       style="margin-left: 25px"
                       disabled>
         </nuxeo-select>
@@ -62,7 +67,7 @@ Contributors:
                         disabled
                         class="secondary"
                         style="margin-left: 50px;"
-                        on-tap="_saveUserWSQuota">Save</nuxeo-button>
+                        on-tap="_saveUserWSQuota">Save</paper-button>
         </div>
       </div>
 
@@ -73,7 +78,7 @@ Contributors:
   <script>
     Polymer({
       is: 'nuxeo-quota-admin-userws',
-      behaviors: [Nuxeo.LayoutBehavior],
+      behaviors: [Nuxeo.LayoutBehavior, Nuxeo.QuotaBehavior],
       properties: {
         /* See Quota.GetConfigurationAndInfo
             quotaConfig.maxQuotaSize
@@ -89,24 +94,19 @@ Contributors:
           type: String,
           observer: "_activateQuotaChanged"
         },
-        maxValue: {
+        quotaValue: {
           type: Number,
-          observer: "_maxValueChanged"
+          observer: "_quotaValueChanged"
         },
-        maxValueUnit: String,
-        unit: {
+        quotaUnit: {
           type: String,
-          value:"MB"
-        },
-        units: {
-          type: Array,
-          value: [
-            {id: "B", label: "Bytes"},
-            {id: "KB", label: "KB"},
-            {id: "MB", label: "MB"},
-            {id: "GB", label: "GB"},
-          ]
+          value:"MB",
+          observer: "_quotaUnitChanged"
         }
+      },
+
+      _getUnits: function() {
+        return this.getUnitsForDropDown();
       },
 
       _quotaConfigChanged: function(newValue) {
@@ -116,34 +116,46 @@ Contributors:
           } else {
             this.activateQuota = "no";
           }
-          this._formatBytes(newValue.quotaSetOnUserWS);
+          let valueAndUnit = this.formatBytes(newValue.quotaSetOnUserWS);
+          this.quotaValue = valueAndUnit.value;
+          this.quotaUnit = valueAndUnit.unit;
         }
       },
 
       _activateQuotaChanged: function(value) {
         
-        this.$.quotaMaxSize.disabled = value === "no";
+        this.$.quotaValueObj.disabled = value === "no";
         this.$.quotaUnit.disabled = value === "no";
 
-        if(value === "yes" && (!this.maxValue || this.maxValue <= 0)) {
-          this.$.saveUserWSQuota.disabled = this.maxValue <= 0;
+        if(value === "yes" && (!this.quotaValue || this.quotaValue <= 0)) {
+          this.$.saveUserWSQuota.disabled = this.quotaValue <= 0;
         } else {
           this.$.saveUserWSQuota.disabled = false;
         }
 
       },
 
-      _maxValueChanged: function(value) {
+      _checkQuotaValue: function() {
+        let valueBytes = this.getValueBytes(this.quotaValue, this.quotaUnit);
+        if(this.quotaConfig && valueBytes > this.quotaConfig.maxQuotaSize) {
+          alert("Value can't be greater than " + this.quotaConfig.maxQuotaSizeStr);
+          let valueAndUnit = this.formatBytes(this.quotaConfig.maxQuotaSize);
+          this.quotaValue = valueAndUnit.value;
+          this.quotaUnit = valueAndUnit.unit;
+        }
+      },
+
+      _quotaValueChanged: function(value) {
         let disable = value <= 0;
         if(this.$.saveUserWSQuota.disabled !== disable) {
           this.$.saveUserWSQuota.disabled = disable;
         }
 
-        let valueBytes = this._getValueBytes(value);
-        if(this.quotaConfig && valueBytes > this.quotaConfig.maxQuotaSize) {
-          alert("Value can't be greater than " + this.quotaConfig.maxQuotaSizeStr);
-          this._formatBytes(this.quotaConfig.maxQuotaSize);
-        }
+        this._checkQuotaValue();
+      },
+
+      _quotaUnitChanged: function(value) {
+        this._checkQuotaValue();
       },
 
       _saveUserWSQuota: function() {
@@ -155,76 +167,26 @@ Contributors:
             msg = "Quota disbaled for User Workspaces.";
           }
         } else {
-          if(this.maxValue <= 0 || !this.unit) {
-            alert("Invalid value: <" + this.maxValue + " " + this.unit + ">");
+          if(this.quotaValue <= 0 || !this.quotaUnit) {
+            alert("Invalid value: <" + this.quotaValue + " " + this.quotaUnit + ">");
           } else {
-            if(confirm("Set max quota for User Workspaces to " + this.maxValue + " " + this.unit + "?")) {
-              maxSizeBytes = this._getValueBytes();
-              msg = "Max quota on User Workspaces activated, work in progress.";
+            if(confirm("Set max quota for User Workspaces to " + this.quotaValue + " " + this.quotaUnit + "?")) {
+              maxSizeBytes = this.getValueBytes(this.quotaValue, this.quotaUnit);
+              msg = "Max quota on User Workspaces activated: Work has started.";
             }
           }
         }
 
-        if(maxSizeBytes) {
+        if(maxSizeBytes && maxSizeBytes !== 0) {
           let op = this.$.setOnUserWorkspacesOp;
-              op.params = {maxSize: maxSizeBytes };
-              op.execute()
-                .then(function(result) {
-                  this.fire('notify', { message: msg });
-                }.bind(this))
-                .catch(function(err) {
-                  alert("An error occured: " + err);
-                })
-        }
-      },
-
-      _formatBytes: function(bytes) {
-        if(!bytes || bytes <= 0) {
-          this.maxValue = 0;
-          this.unit = "MB";
-          return;
-        }
-
-
-        const marker = 1024;
-        const decimal = 2;
-        const kiloBytes = marker;
-        const megaBytes = marker * marker;
-        const gigaBytes = marker * marker * marker;
-
-        let value, unit;
-
-        if (bytes < kiloBytes) {
-          value = bytes;
-          unit = "B"
-        } else if (bytes < megaBytes) {
-          value = (bytes / kiloBytes).toFixed(decimal);
-          unit = "KB"
-        } else if (bytes < gigaBytes) {
-          value = (bytes / megaBytes).toFixed(decimal);
-          unit = "MB"
-        } else {
-          value = (bytes / gigaBytes).toFixed(decimal);
-          unit = "GB"
-        }
-
-        this.maxValue = value;
-        this.unit = unit;
-      },
-
-      _getValueBytes: function(value) {
-        if(!value) {
-          value = this.maxValue;
-        }
-        switch(this.unit) {
-          case "B":
-            return value;
-          case "KB":
-            return value * 1024;
-          case "MB":
-            return value * 1024 * 1024;
-          case "GB":
-            return value * 1024 * 1024 * 1024;
+          op.params = { maxSize: maxSizeBytes };
+          op.execute()
+            .then(function(result) {
+              this.fire('notify', { message: msg });
+            }.bind(this))
+            .catch(function(err) {
+              alert("An error occured: " + err);
+            })
         }
       }
     });

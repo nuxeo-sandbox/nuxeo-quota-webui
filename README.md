@@ -18,14 +18,22 @@ Basically:
 #### "Quota / Statistics" Admin panel
 
 * Display pie-chart stats
-* Activate User Workspaces quota
-* Run counters for the first time, on existing (and current) repository
+* Activate User Workspaces quota, setting the max size for every User Workspace.
+  * The max possible value is by default 999 GB
+* Run counters for the first time, on existing (and current) repository.
 
-[TBD: ScreenShot]
+![Admin Center/Quota](readme-resources/quota-admin.jpg)
 
-#### New Tab at Container Leve
+#### New Tab at Container Level
 
 [... TBD ...]
+
+By default, the tab is displayed for `Domain` and `Workspace`. This can be tuned by setting the `nuxeo.quota.containersfilter` configuration parameter in `nuxeo.conf`. It is a comma-separated list, which is directly used in a `nuxeo-filter` element in WebUI. For example:
+
+```
+nuxeo.quota.containersfilter=Domain,Workspace,MyCustomContainer
+```
+
 
 
 ## Build and Install

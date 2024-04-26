@@ -7,6 +7,7 @@
     <operation class="nuxeo.quota.webui.operations.QuotaLaunchInitialComputation"/>
     <operation class="nuxeo.quota.webui.operations.QuotaGetConfigurationAndInfo"/>
     <operation class="nuxeo.quota.webui.operations.QuotaSetOnUserWorkspaces"/>
+    <operation class="nuxeo.quota.webui.operations.QuotaGetOnContainer"/>
   </extension>
 
 </component>

@@ -1,0 +1,255 @@
+<!--
+(C) Copyright 2024 Hyland (http://hyland.com/) and contributors.
+Licensed under the Apache License, Version 2.0 (the 'License');
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+​
+    http://www.apache.org/licenses/LICENSE-2.0
+​
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an 'AS IS' BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+Contributors:
+  Thibaud Arguillere (thibarg)
+-->
+<!--
+  <nuxeo-quota-limit-setter
+      document="[[document]]"
+      initial-quota-value="123456"  size in bytes
+      max-size="123456"  size in bytes
+      set-read-only="true"  or "[[someValue]]"
+      for-user-workspaces (or do not use this propertye)
+      ></nuxeo-quota-limit-setter>
+-->
+<dom-module id="nuxeo-quota-limit-setter">
+  <template>
+    <style include="iron-flex iron-flex-alignment nuxeo-styles">
+      .actionCard {
+        border-width: 1px;
+        border-style: solid;
+        border-color: lightgray;
+      }
+    </style>
+
+      <div class="layout horizontal flex">
+        <div class="layout vertical" style="margin-left: 50px">
+          <nuxeo-input id="quotaValueObject"
+                       label="[[i18n('label.quota.maxSize')]]"
+                       type="number"
+                       value="{{quotaValue}}"
+                       disabled></nuxeo-input>
+          <div>
+            (Max: [[maxSizeStr]])
+          </div>
+        </div>
+      
+        <nuxeo-select id="quotaUnitObject"
+                      label="Unit"
+                      selected="{{quotaValueUnit}}"
+                      options="[[units]]"
+                      style="margin-left: 25px"
+                      disabled>
+        </nuxeo-select>
+
+        <div>
+          <paper-button id="saveQuotaObject"
+                        disabled
+                        class="secondary"
+                        style="margin-left: 50px;"
+                        on-tap="_saveQuota">Save</nuxeo-button>
+        </div>
+      </div>
+
+
+  </template>
+
+  <script>
+    Polymer({
+      is: 'nuxeo-quota-limit-setter',
+      behaviors: [Nuxeo.LayoutBehavior],
+      properties: {
+        // Properties set by the parent
+        document: Object,
+        initialQuotaValue: {
+          type: Number,
+          observer: "_initialQuotaValueChanged"
+        },
+        maxSize: {
+          type: Number,
+          value: 0,
+          observer: "_maxSizeChanged"
+        },
+        maxSizeStr: String,
+        forUserWorkspaces: Boolean,
+        
+        setReadOnly: {
+          type: Boolean,
+          value: true,
+          observer: "_setReadOnlyChanged"
+        },
+        
+        // "internal" properties
+        quotaValue: {
+          type: Number,
+          observer: "_quotaValueChanged"
+        },
+        quotaValueUnit: {
+          type: String,
+          value:"MB"
+        },
+        units: {
+          type: Array,
+          value: [
+            {id: "B", label: "Bytes"},
+            {id: "KB", label: "KB"},
+            {id: "MB", label: "MB"},
+            {id: "GB", label: "GB"},
+          ]
+        }
+      },
+
+      ready: function() {
+        //alert("nuxeo-quota-limit-setter ready.\nforUserWorkspaces: " + this.forUserWorkspaces);
+      },
+
+      _initialQuotaValueChanged: function(newValue) {
+        if(newValue) {
+          let valueAndUnit = this._formatBytes(newValue);
+          this.quotaValue = valueAndUnit.value;
+          this.unit = valueAndUnit.unit;
+        }
+      },
+
+      _maxSizeChanged: function(newValue) {
+        let valueStr = "";
+
+        if(newValue) {
+          let valueAndUnit = this._formatBytes(newValue);
+          valueStr = valueAndUnit.value + " " + valueAndUnit.unit;
+        }
+
+        this.maxSizeStr = valueStr;
+      },
+
+      _setReadOnlyChanged: function(newValue) {
+        this._enableDisableObjects();
+      },
+
+      _enableDisableObjects: function() {
+        if(this.setReadOnly) {
+          this.$.quotaValueObject.disabled = true;
+          this.$.quotaUnitObject.disabled = true;
+          this.$.saveQuotaObject.disabled = true;
+          return;
+        } else {
+          this.$.quotaValueObject.disabled = false;
+          this.$.quotaUnitObject.disabled = false;
+        }
+        
+        this.$.saveQuotaObject.disabled = this.quotaValue <= 0;
+
+      },
+
+      _quotaValueChanged: function(value) {
+       this._enableDisableObjects();
+
+        let valueBytes = this._getValueBytes(value);
+        if(valueBytes > this.maxSize) {
+          alert("Value can't be greater than " + this.maxSizeStr);
+          let valueAndUnit = this._formatBytes(this.maxSize);
+          this.quotaValue = valueAndUnit.value;
+          this.unit = valueAndUnit.unit;
+        }
+      },
+
+      _saveQuota: function() {
+        alert("Saving quota. forUserWorkspaces => " + this.forUserWorkspaces);
+        /*
+        let maxSizeBytes = null;
+        let msg;
+        if(this.activateQuota == "no") {
+          if(confirm("Disable quota on User Workspaces ?")) {
+            maxSizeBytes = -1;
+            msg = "Quota disbaled for User Workspaces.";
+          }
+        } else {
+          if(this.quotaValue <= 0 || !this.quotaValueUnit) {
+            alert("Invalid value: <" + this.quotaValue + " " + this.quotaValueUnit + ">");
+          } else {
+            if(confirm("Set max quota for User Workspaces to " + this.quotaValue + " " + this.quotaValueUnit + "?")) {
+              maxSizeBytes = this._getValueBytes();
+              msg = "Max quota on User Workspaces activated, work in progress.";
+            }
+          }
+        }
+
+        if(maxSizeBytes) {
+          let op = this.$.setOnUserWorkspacesOp;
+              op.params = {maxSize: maxSizeBytes };
+              op.execute()
+                .then(function(result) {
+                  this.fire('notify', { message: msg });
+                }.bind(this))
+                .catch(function(err) {
+                  alert("An error occured: " + err);
+                })
+        }*/
+      },
+
+      _formatBytes: function(bytes) {
+        if(!bytes || bytes <= 0) {
+          return {
+            value: 0,
+            unit: "MB"
+          };
+        }
+
+        const marker = 1024;
+        const decimal = 2;
+        const kiloBytes = marker;
+        const megaBytes = marker * marker;
+        const gigaBytes = marker * marker * marker;
+
+        let value, unit;
+
+        if (bytes < kiloBytes) {
+          value = bytes;
+          unit = "B"
+        } else if (bytes < megaBytes) {
+          value = (bytes / kiloBytes).toFixed(decimal);
+          unit = "KB"
+        } else if (bytes < gigaBytes) {
+          value = (bytes / megaBytes).toFixed(decimal);
+          unit = "MB"
+        } else {
+          value = (bytes / gigaBytes).toFixed(decimal);
+          unit = "GB"
+        }
+
+        return {
+          value: value,
+          unit: unit
+        };
+      },
+
+      _getValueBytes: function(value) {
+        if(!value) {
+          value = this.quotaValue;
+        }
+        switch(this.quotaValueUnit) {
+          case "B":
+            return value;
+          case "KB":
+            return value * 1024;
+          case "MB":
+            return value * 1024 * 1024;
+          case "GB":
+            return value * 1024 * 1024 * 1024;
+        }
+      }
+    });
+  </script>
+</dom-module>

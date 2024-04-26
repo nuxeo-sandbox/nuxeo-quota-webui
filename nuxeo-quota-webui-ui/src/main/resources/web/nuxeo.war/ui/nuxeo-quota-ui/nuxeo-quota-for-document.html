@@ -14,8 +14,13 @@ limitations under the License.
 
 Contributors:
   Thibaud Arguillere (thibarg)
+
+TODO: As several parts are shared with nuxeo-quota-for-document, something should be
+      done to centralize the things (units, handling values, etc.). Some utilities
+      are centralized in QuotaBehavior, like units, formating bytes, ...
 -->
 <link rel="import" href="nuxeo-quota-stats.html">
+<link rel="import" href="nuxeo-quota-behavior.html">
 <dom-module id="nuxeo-quota-for-document">
   <template>
     <style include="iron-flex iron-flex-alignment nuxeo-styles">
@@ -41,8 +46,49 @@ Contributors:
       }
     </style>
 
+    <nuxeo-operation id="getQuotaOp" op="Quota.GetContainerQuota" response="{{originalQuota}}"></nuxeo-operation>
+    <nuxeo-operation id="setQuotaOp" op="Quotas.SetMaxSize"></nuxeo-operation>
+
     <nuxeo-card heading="[[i18n('adm.quota.statistics')]]">
       <nuxeo-quota-stats document="[[document]]"></nuxeo-quota-stats>
+    </nuxeo-card>
+
+    <nuxeo-card heading="[[i18n('adm.quota.activate')]]" class="actionCard">
+      <div class="layout horizontal flex">
+        <div class="layout vertical" style="margin-left: 50px">
+          <nuxeo-input id="quotaValueObj"
+                      label="[[i18n('label.quota.maxSize')]]"
+                      type="number"
+                      value="{{quotaValue}}"></nuxeo-input>
+          <template is="dom-if" if="[[!_hasOriginalQuota(originalQuota)]]">
+            (No quota set on this container)
+          </template>
+          <div>
+            Max: [[originalQuota.maxQuotaSizeStr]]
+          </div>
+        </div>
+      
+        <nuxeo-select id="quotaValueObj"
+                      label="Unit"
+                      selected="{{quotaUnit}}"
+                      options="[[_getUnits()]]"
+                      style="margin-left: 25px">
+        </nuxeo-select>
+
+        <div>
+          <paper-button id="saveQuota"
+                        disabled
+                        class="secondary"
+                        style="margin-left: 50px;"
+                        on-tap="_saveQuota">Save</paper-button>
+          
+          <paper-button id="disableQuota"
+                        disabled
+                        class="secondary"
+                        style="margin-left: 50px;"
+                        on-tap="_disableQuota">Disable Quota</paper-button>
+        </div>
+      </div>
     </nuxeo-card>
 
   </template>
@@ -50,12 +96,138 @@ Contributors:
   <script>
     Polymer({
       is: 'nuxeo-quota-for-document',
-      behaviors: [Nuxeo.LayoutBehavior],
+      behaviors: [Nuxeo.LayoutBehavior, Nuxeo.QuotaBehavior],
       properties: {
         document: {
-          type: Object
+          type: Object,
+          observer: "_documentChanged"
+        },
+        originalQuota: {
+          type: Object,
+          observer: "_originalQuotaChanged"
+        },
+        quotaValue: {
+          type: Number,
+          observer: "_quotaValueChanged"
+        },
+        quotaUnit: {
+          type: String,
+          value:"MB"
         }
-      }
+      },
+
+      _documentChanged: function(doc) {
+        if(doc) {
+          let op = this.$.getQuotaOp;
+          op.input = doc;
+          op.execute()
+            .then(function(result) {
+              // Nothing, _originalQuotaChanged() will be called
+            }.bind(this))
+            .catch(function(error) {
+              alert("An error occured:\n" + error)
+            }.bind(this))
+        }
+      },
+
+      _hasOriginalQuota: function(quotaObj) {
+        if(!quotaObj || !quotaObj.quotaValue || quotaObj.quotaValue <= 0) {
+          return false;
+        }
+
+        return true;
+      },
+
+      _getUnits: function() {
+        return this.getUnitsForDropDown();
+      },
+
+      _originalQuotaChanged: function(result) {
+        if(result) {
+          if(result.quotaValue <= 0) {
+            this.quotaValue = null;
+          } else {
+            let valueAndUnit = this.formatBytes(result.quotaValue);
+            this.quotaValue = valueAndUnit.value;
+            this.quotaUnit = valueAndUnit.unit;
+          }
+        }
+
+        if(result && result.quotaValue > 0) {
+          this.$.disableQuota.disabled = false;
+        } else {
+          this.$.disableQuota.disabled = true;
+        }
+      },
+
+      _checkQuotaValue: function() {
+        let valueBytes = this.getValueBytes(this.quotaValue, this.quotaUnit);
+        if(this.originalQuota && valueBytes > this.originalQuota.maxQuotaSize) {
+          
+          alert("Value can't be greater than " + this.originalQuota.maxQuotaSizeStr);
+          let valueAndUnit = this.formatBytes(this.originalQuota.maxQuotaSize);
+          this.quotaValue = valueAndUnit.value;
+          this.quotaUnit = valueAndUnit.unit;
+        }
+      },
+
+      _quotaValueChanged: function(value) {
+        let disable = value <= 0;
+        if(this.$.saveQuota.disabled !== disable) {
+          this.$.saveQuota.disabled = disable;
+        }
+
+        this._checkQuotaValue();
+      },
+
+      _quotaUnitChanged: function(value) {
+        this._checkQuotaValue();
+      },
+
+      _saveQuota: function() {
+        let maxSizeBytes = null;
+        let msg;
+        if(this.quotaValue <= 0 || !this.quotaUnit) {
+          alert("Invalid value: <" + this.quotaValue + " " + this.quotaUnit + ">");
+        } else {
+          if(confirm("Set max quota for this container (" + this.document.title + ") to " + this.quotaValue + " " + this.quotaUnit + "?")) {
+            maxSizeBytes = this.getValueBytes(this.quotaValue, this.quotaUnit);
+          }
+        }
+
+          if(maxSizeBytes && maxSizeBytes !== 0) {
+            let op = this.$.setQuotaOp;
+            op.input = this.document;
+            op.params = { targetSize: maxSizeBytes };
+            op.execute()
+              .then(function(result) {
+                this.fire('notify', { message: "Quota set on the container <" + this.document.title + ">." });
+                // Force refresh values (the operation returns the value of the quota)
+                this._documentChanged(this.document);
+              }.bind(this))
+              .catch(function(err) {
+                alert("An error occured: " + err);
+              })
+          }
+        },
+
+        _disableQuota: function() {
+          if(!confirm("Disable Quota on this container (" + this.document.title + ") ?")) {
+            return;
+          }
+          let op = this.$.setQuotaOp;
+          op.input = this.document;
+          op.params = { targetSize: -1 };
+          op.execute()
+            .then(function(result) {
+              this.fire('notify', { message: "Quota unset on the container <" + this.document.title + ">." });
+              // Force refresh values (the operation returns the value of the quota)
+              this._documentChanged(this.document);
+            }.bind(this))
+            .catch(function(error) {
+              alert("An error occured: " + err);
+            }.bind(this));
+        }
     });
   </script>
 </dom-module>

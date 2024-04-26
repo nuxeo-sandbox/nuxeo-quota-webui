@@ -33,6 +33,7 @@ import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.work.api.WorkManager;
 import org.nuxeo.ecm.core.work.api.WorkQueueMetrics;
 import org.nuxeo.ecm.quota.QuotaStatsService;
+import org.nuxeo.ecm.quota.size.QuotaAware;
 import org.nuxeo.runtime.api.Framework;
 
 import nuxeo.quota.webui.QuotaConfigInfo;
@@ -40,47 +41,43 @@ import nuxeo.quota.webui.QuotaConfigInfo;
 /**
  * We get values as they were used in the deprecated jsf QuotaStatsActions.java
  */
-@Operation(id = QuotaGetConfigurationAndInfo.ID, category = "Quotas", label = "Quota: Get Configuration", description = ""
-        + "Return the misc configuration settings")
-public class QuotaGetConfigurationAndInfo {
+@Operation(id = QuotaGetOnContainer.ID, category = "Quotas", label = "Quota: Get Container Quota", description = ""
+        + "Return the quota info on the input container. quotaValue <= 0 means no quota is set."
+        + " Also return info on the max possible size.")
+public class QuotaGetOnContainer {
 
-    private static final Logger log = LogManager.getLogger(QuotaGetConfigurationAndInfo.class);
+    private static final Logger log = LogManager.getLogger(QuotaGetOnContainer.class);
 
-    public static final String ID = "Quota.GetConfigurationAndInfo";
-
-    public static final String QUOTA_MAX_SIZE_PROP = "nuxeo.quota.maxsize";
-
-    public static final String QUOTA_MAX_SIZE_DEFAULT = "999 GB";
+    public static final String ID = "Quota.GetContainerQuota";
 
     @Context
     protected CoreSession session;
 
-    @Context
-    WorkManager workManager;
-
-    @Context
-    QuotaStatsService quotaStatsService;
-
     @OperationMethod
-    public Blob run() {
+    public Blob run(DocumentModel input) {
 
         JSONObject jsonObj = new JSONObject();
+
+        if (input == null) {
+            throw new IllegalArgumentException("An input document isrequired");
+        }
+
+        long maxSize = -1;
+        // This is what original JSF action is doing (QuotaStatsAction#isQuotaSetOnCurrentDocument)
+        // the quota info set on the userworkspaces root should be ignored
+        if ("UserWorkspacesRoot".equals(input.getType())) {
+            maxSize = -1;
+        } else {
+            QuotaAware qa = input.getAdapter(QuotaAware.class);
+            if (qa != null) {
+                maxSize = qa.getMaxQuota();
+            }
+        }
+        jsonObj.put("quotaValue", maxSize);
 
         JSONObject maxSizeJson = QuotaConfigInfo.getMaxQuotaSize();
         jsonObj.put("maxQuotaSize", maxSizeJson.get("maxQuotaSize"));
         jsonObj.put("maxQuotaSizeStr", maxSizeJson.get("maxQuotaSizeStr"));
-
-        // Is something running?
-        boolean running = false;
-        WorkQueueMetrics metrics = workManager.getMetrics("quota");
-        if (metrics != null) {
-            running = metrics.getRunning().longValue() + metrics.getScheduled().longValue() > 0;
-        }
-        jsonObj.put("hasWorkInProgress", running);
-
-        // Quota on UserWS (if any)
-        // (-1 if not set)
-        jsonObj.put("quotaSetOnUserWS", quotaStatsService.getQuotaSetOnUserWorkspaces(session));
 
         return Blobs.createJSONBlob(jsonObj.toString());
     }
