@@ -9,7 +9,7 @@
 
   <groupId>nuxeo.quota.webui</groupId>
   <artifactId>nuxeo-quota-webui-parent</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>1.1-SNAPSHOT</version>
   <name>Nuxeo quota webui parent</name>
   <description />
   <packaging>pom</packaging>
