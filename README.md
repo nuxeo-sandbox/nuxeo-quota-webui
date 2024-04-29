@@ -52,10 +52,11 @@ Sometime, the localization file is not deploy. It is located at `nuxeo-quota-web
 
 If you don't see the labels, then the work around is the following:
 
-1. Copy the value found in the messages.json file.
+1. Copy the values found in the messages.json file.
   * Do not copy the beginning/ending `{` and `}`
-2. Typically, paste it in your Studio project > Modeler > UI > Translations.
-  * Make sure you paste with no JSON syntax error
+2. Typically, paste the values in your Studio project > Modeler > UI > Translations > messages.json.
+  * ⚠️ Make sure you paste with no JSON syntax error (don't forget the `,` after the last line after pasting, for example)
+3. Deploy your Studio project
 
 
 
