@@ -48,9 +48,10 @@ When available for document, it displays "Quota / Statistics" tab with:
 
 ## Known Issue(s)
 
-Sometime, the localization file is not deploy. It is located at `nuxeo-quota-webui/nuxeo-quota-webui-ui/src/main/resources/web/nuxeo.war/ui/i18n`.
+#### Labels Display Translation Keys
+Sometime, the localization file is not deployed. It is located at `nuxeo-quota-webui/nuxeo-quota-webui-ui/src/main/resources/web/nuxeo.war/ui/i18n`.
 
-If you don't see the labels, then the work around is the following:
+If you don't see the labels ("action.activate.quota" instead of "Activate" for example), then the work around is the following:
 
 1. Copy the values found in the messages.json file.
   * Do not copy the beginning/ending `{` and `}`
@@ -59,16 +60,19 @@ If you don't see the labels, then the work around is the following:
 3. Deploy your Studio project
 
 
+#### Error Handling
+When a user uploads content that makes the container reaches its quota, the error displayed in the UI is not explicit. The creation dialog just displays that "an error occurred" (The error is explicit in `server.log`). We are missing some error bubbling and handling to make it clear to the end user that they reached the quota.
 
 
 ## Possible `TODO`
 
-The work done works well, converting the deprecated JST actions to Automation operations called by the UI is a valid pattern.
+Converting the deprecated JSF actions to Automation operations called by the UI is a valid pattern that works well.
 
 At platform level, a [Pull request](https://doc.nuxeo.com/nxdoc/contributing-to-nuxeo/) contributing Nuxeo source code could be made, adding all this to the `nuxeo-quota` core code that is available in the platform (listeners that check the quotas, activation/de-activation of quotas, etc.). So, things that could be done:
 
-* Move the java code of this plugins (operations, etc.) to the nuxeo-quota module
-* Tune the UI, make it look, maybe, a bit better.
+* Move the java code of this plugin (operations, etc.) to the nuxeo-quota module
+* WebUI: Bubble the error when the quota is reached
+* Tune the UI global look & feel, make it look, maybe, a bit better.
 
 
 
