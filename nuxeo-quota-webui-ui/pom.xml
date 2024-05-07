@@ -4,7 +4,7 @@
   <parent>
     <groupId>nuxeo.quota.webui</groupId>
     <artifactId>nuxeo-quota-webui-parent</artifactId>
-    <version>1.1-SNAPSHOT</version>
+    <version>1.2-SNAPSHOT</version>
   </parent>
 
   <artifactId>nuxeo-quota-webui-ui</artifactId>

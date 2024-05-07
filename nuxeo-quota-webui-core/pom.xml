@@ -4,9 +4,9 @@
   <parent>
     <groupId>nuxeo.quota.webui</groupId>
     <artifactId>nuxeo-quota-webui-parent</artifactId>
-    <version>1.1-SNAPSHOT</version>
+    <version>1.2-SNAPSHOT</version>
   </parent>
-  <artifactId>nuxeo-quota-webui-corxe</artifactId>
+  <artifactId>nuxeo-quota-webui-core</artifactId>
   <name>Nuxeo quota webui core</name>
   <description />
 
