@@ -31,6 +31,10 @@
       <artifactId>nuxeo-quota-webui-ui</artifactId>
       <version>1.0-SNAPSHOT</version>
     </dependency>
+    <dependency>
+      <groupId>org.nuxeo.ecm.platform</groupId>
+      <artifactId>nuxeo-quota</artifactId>
+    </dependency>
   </dependencies>
 
   <build>
