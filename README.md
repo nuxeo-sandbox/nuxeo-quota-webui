@@ -18,15 +18,7 @@ Basically:
 **New features (not available in the legacy JSF `nuxeo-quota` plugin):**
 * Per-user **total quota** (sum of bytes owned via `dc:creator`)
 * Per-user **per-blob upload size cap**
-* XML defaults per group + live admin overrides per group and per user (no restart)
-* End-user "My quota usage" widget in the user menu
-* Cluster-shared storage via `KeyValueService`
-* Dedicated `Quota.User.*` Automation operations
-
-See below "Possible `TODO`".
-
-> [!IMPORTANT]
-> This plugin is available on the marketplace in its latest release, and can be installed as any plugin (`nuxeoctl mp-install nuxeo-quota-webui`)
+* (Configurable with XML contribution, and can be modified by an administrator in the UI)
 
 ## Usage
 
@@ -128,6 +120,8 @@ In production these are automatically backed by the configured `default` key/val
 
 ##### Automation operations (`Quota.User.*`)
 
+You should not ened to use these operaitons, they are listed here FYI.
+
 | Operation ID | Purpose |
 |---|---|
 | `Quota.User.GetConfiguration` | Read XML defaults + all group/user overrides (admin) |
@@ -168,35 +162,55 @@ At platform level, a [Pull request](https://doc.nuxeo.com/nxdoc/contributing-to-
 * Tune the UI global look & feel, make it look, maybe, a bit better.
 
 
+## Deploy / Build and Deploy
 
-## Build and Install
+### Build and Deploy Locally
 
-  ```
-  cd /path/to/nuxeo-quota-webui
-  mvn clean install
-  ```
+```bash
+git clone https://github.com/nuxeo-sandbox/nuxeo-quota-webui
+cd nuxeo-quota-webui
+mvn clean install
+```
 
+To skip unit testing, add `-DskipTests`.
 
-## Licensing
+The Marketplace package is generated at:
+```
+nuxeo-quota-webui-package/target/nuxeo-quota-webui-package-{VERSION}}-*.zip
+```
 
-[Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+Install it via `nuxeoctl`:
+```bash
+nuxeoctl mp-install nuxeo-quota-webui-package-{VERSION}.zip
+```
+
+### Deploy from Nuxeo Marketplace
+
+This plugin is available as a package on the [Nuxeo Marketplace](https://connect.nuxeo.com/nuxeo/site/marketplace/package/nuxeo-quota-webui), you can just:
+
+```bash
+nuxeoctl mp-install nuxeo-quota-webui
+```
 
 
 ## Support
-These features are not part of the Nuxeo Production platform.
+
+**These features are not part of the Nuxeo Production platform.**
 
 These solutions are provided for inspiration and we encourage customers to use them as code samples and learning resources.
 
-This is a moving project (no API maintenance, no deprecation process, etc.) If any of these solutions are found to be useful for the Nuxeo Platform in general, they will be integrated directly into platform, not maintained here.
+This is a moving project (no API maintenance, no deprecation process, etc.) If any of these solutions are found to be useful for the Nuxeo Platform in general, they will be integrated directly into the platform, not maintained here.
 
+## License
+
+[Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.html)
 
 ## About Nuxeo
-Nuxeo Platform is an open source Content Services platform, written in Java and provided by Hyland. Data can be stored in both SQL & NoSQL databases.
+
+Nuxeo Platform is an open source highly scalable, cloud-native, enterprise content management product with rich multimedia support, written in Java. Data can be stored in both SQL & NoSQL databases.
 
 The development of the Nuxeo Platform is mostly done by Nuxeo employees with an open development model.
 
 The source code, documentation, roadmap, issue tracker, testing, benchmarks are all public.
 
-Typically, Nuxeo users build different types of information management solutions for [document management](https://www.nuxeo.com/solutions/document-management/), [case management](https://www.nuxeo.com/solutions/case-management/), and [digital asset management](https://www.nuxeo.com/solutions/dam-digital-asset-management/), use cases. It uses schema-flexible metadata & content models that allows content to be repurposed to fulfill future use cases.
-
-More information is available at [www.hyland.copm](https://www.hyland.com).
+More information is available at [Hyland/Nuxeo](https://www.hyland.com/en/solutions/products/nuxeo-platform).
