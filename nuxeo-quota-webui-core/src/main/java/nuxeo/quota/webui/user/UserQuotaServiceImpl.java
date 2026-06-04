@@ -27,9 +27,12 @@ import java.util.Optional;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.nuxeo.common.utils.SizeUtils;
+import org.nuxeo.ecm.core.cache.Cache;
+import org.nuxeo.ecm.core.cache.CacheService;
 import org.nuxeo.ecm.core.api.NuxeoPrincipal;
 import org.nuxeo.ecm.platform.usermanager.UserManager;
 import org.nuxeo.runtime.api.Framework;
+import org.nuxeo.runtime.model.ComponentContext;
 import org.nuxeo.runtime.model.ComponentInstance;
 import org.nuxeo.runtime.model.DefaultComponent;
 
@@ -54,21 +57,30 @@ public class UserQuotaServiceImpl extends DefaultComponent implements UserQuotaS
 
     public static final String XP_USER_QUOTAS = "userQuotas";
 
+    public static final String CACHE_NAME = "quota-user-limits";
+
     protected static final long UNLIMITED_SENTINEL = -1L;
 
     protected Map<String, UserQuotaDescriptor> registry = new HashMap<>();
 
     protected UserQuotaOverrideStore overrideStore;
 
+    protected volatile boolean enabled = true;
+
+    @Override
+    public void activate(ComponentContext context) {
+        super.activate(context);
+        var prop = Framework.getProperty(PROPERTY_DISABLED, "false");
+        enabled = !Boolean.parseBoolean(prop);
+        if (!enabled) {
+            log.warn("Per-user quota listener is DISABLED via {} — counters and enforcement will be skipped",
+                    PROPERTY_DISABLED);
+        }
+    }
+
     @Override
     public UserQuotaLimits getEffectiveLimits(NuxeoPrincipal p, String repositoryName) {
-        if (p.isAdministrator()) {
-            return new UserQuotaLimits(UNLIMITED_SENTINEL, UNLIMITED_SENTINEL,
-                    UserQuotaLimits.SOURCE_ADMIN_BYPASS, null);
-        }
-        var maxUpload = resolveKey(p, repositoryName, UserQuotaOverrideStore.K_MAX_UPLOAD);
-        var maxTotal = resolveKey(p, repositoryName, UserQuotaOverrideStore.K_MAX_TOTAL);
-        return new UserQuotaLimits(maxUpload, maxTotal, null, null);
+        return getEffectiveLimitsForUser(p.getName(), repositoryName);
     }
 
     @Override
@@ -78,6 +90,18 @@ public class UserQuotaServiceImpl extends DefaultComponent implements UserQuotaS
 
     @Override
     public UserQuotaLimits getEffectiveLimitsForUser(String userId, String repositoryName) {
+        var cache = getCache();
+        var cacheKey = repositoryName + "|" + userId;
+        var cached = (UserQuotaLimits) cache.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+        var limits = computeLimits(userId, repositoryName);
+        cache.put(cacheKey, limits);
+        return limits;
+    }
+
+    protected UserQuotaLimits computeLimits(String userId, String repositoryName) {
         var userManager = Framework.getService(UserManager.class);
         var p = userManager.getPrincipal(userId);
         if (p == null) {
@@ -85,7 +109,44 @@ public class UserQuotaServiceImpl extends DefaultComponent implements UserQuotaS
             return new UserQuotaLimits(UNLIMITED_SENTINEL, UNLIMITED_SENTINEL,
                     UserQuotaLimits.SOURCE_UNLIMITED, null);
         }
-        return getEffectiveLimits(p, repositoryName);
+        if (p.isAdministrator()) {
+            return new UserQuotaLimits(UNLIMITED_SENTINEL, UNLIMITED_SENTINEL,
+                    UserQuotaLimits.SOURCE_ADMIN_BYPASS, null);
+        }
+        var maxUpload = resolveKey(p, repositoryName, UserQuotaOverrideStore.K_MAX_UPLOAD);
+        var maxTotal = resolveKey(p, repositoryName, UserQuotaOverrideStore.K_MAX_TOTAL);
+        return new UserQuotaLimits(maxUpload, maxTotal, null, null);
+    }
+
+    protected Cache getCache() {
+        var cs = Framework.getService(CacheService.class);
+        return cs.getCache(CACHE_NAME);
+    }
+
+    @Override
+    public void invalidateCache() {
+        var cache = getCache();
+        if (cache != null) {
+            cache.invalidateAll();
+        }
+    }
+
+    @Override
+    public void invalidateCacheForUser(String userId, String repositoryName) {
+        var cache = getCache();
+        if (cache != null) {
+            cache.invalidate(repositoryName + "|" + userId);
+        }
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    @Override
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
     }
 
     /** Resolve a single key using the full resolution chain. */
@@ -197,6 +258,7 @@ public class UserQuotaServiceImpl extends DefaultComponent implements UserQuotaS
     public void registerContribution(Object contribution, String extensionPoint, ComponentInstance component) {
         if (XP_USER_QUOTAS.equals(extensionPoint) && contribution instanceof UserQuotaDescriptor d) {
             registry.put(d.group, d);
+            invalidateCache();
         }
     }
 
@@ -204,6 +266,7 @@ public class UserQuotaServiceImpl extends DefaultComponent implements UserQuotaS
     public void unregisterContribution(Object contribution, String extensionPoint, ComponentInstance component) {
         if (XP_USER_QUOTAS.equals(extensionPoint) && contribution instanceof UserQuotaDescriptor d) {
             registry.remove(d.group);
+            invalidateCache();
         }
     }
 }

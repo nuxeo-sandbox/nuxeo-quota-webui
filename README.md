@@ -1,5 +1,8 @@
 # nuxeo-quota-webui
 
+> [!CAUTION]
+> Version 2025.1.0-SNAPSHOT (for Nuxeo LTS 2025) is work in progress (new feature: Per-User quotas), is still und er testing, and using GitHub as backup: **do not use it until it is released and available on the marketplace**.
+> Only the released version 1.1 (for Nuxeo LTS 2023) has been tested by a Nuxeo Presles engineer.
 
 
 ## Features
@@ -19,10 +22,6 @@ Basically:
 * Per-user **total quota** (sum of bytes owned via `dc:creator`)
 * Per-user **per-blob upload size cap**
 * (Configurable with XML contribution, and can be modified by an administrator in the UI)
-
-> [!CAUTION]
-> This new Per-user Quota has not yet been tested besides unit-tests => we recommend you don't use this feature yet.
-> (This alert will be remonved once tests in a Nuxeo Server has been done)
 
 ## Usage
 
@@ -104,11 +103,114 @@ A new entry is contributed to the user menu (`USER_MENU_ITEMS` slot) showing the
 
 ![User Quota in user menu](readme-resources/user-quotas-user-menu.jpg)
 
-##### Initial computation
+##### Initial computation & recompute
 
-For an existing repository, launch a one-time computation from the Admin Center → **Compute Initial Statistics** → **Per-user quota**. It runs asynchronously as a `Work` (`UserQuotaInitialComputationWork`) and populates the per-user counters.
+For an existing repository, launch computation from the Admin Center → **Compute Initial Statistics** → **Per-user quota**. It runs asynchronously via the Bulk Action Framework (stream-based, fault-tolerant) and populates the per-user counters.
+
+Two additional Automation operations allow fine-grained recompute without going through the **Compute Initial Statistics** button. They are also surfaced in the Admin Center → **Quota / Statistics** → **User Quotas** card (under "Recompute per-user counters"): a comma-separated user IDs field with a **Recompute selected users** button, and a **Recompute all users** button.
+
+| Operation ID | Purpose |
+|---|---|
+| `Quota.User.RecomputeUsers` | Recompute counters for specific user(s) only (admin) |
+| `Quota.User.RecomputeAll` | Recompute counters for **all** users in the repository (admin) |
+
+Both return a JSON blob with `{status, commandId, ...}`. The status is `"submitted"` on success or `"skipped"` when no valid users were provided.
+
+Example — recompute for two users:
+```bash
+curl -u Administrator:Administrator -X POST \
+  http://localhost:8080/nuxeo/automation/Quota.User.RecomputeUsers \
+  -H 'Content-Type: application/json' \
+  -d '{"params":{"users":["jdoe","asmith"]}}'
+```
 
 ![Initial computation](readme-resources/user-quotas-initial-compute.jpg)
+
+##### Completion event: `userQuotaRecomputeDone`
+
+After each per-user quota recompute completes, the plugin fires a synchronous Nuxeo event named `userQuotaRecomputeDone` (constant `UserQuotaService.EVENT_USER_QUOTA_RECOMPUTE_DONE`). This lets external code refresh caches, notify users, kick off reporting, etc.
+
+The event is fired from **all three** recompute entry points:
+
+| Entry point | `scope` value |
+|---|---|
+| Admin Center → "Compute Initial Statistics" → "Per-user quota" (op `Quota.LaunchInitialComputation`) | `"all"` |
+| `Quota.User.RecomputeAll` | `"all"` |
+| `Quota.User.RecomputeUsers` | `"users"` |
+
+Payload (all keys are `Serializable`):
+
+| Key | Type | Description |
+|---|---|---|
+| `repositoryName` | String | Repository the command ran on |
+| `scope` | String | `"all"` or `"users"` |
+| `commandId` | String | BAF command identifier |
+| `requestedUsers` | List\<String\> | Users that were requested (empty when `scope="all"`) |
+| `processedUsers` | List\<String\> | Users that were actually processed (when `scope="all"`, populated post-completion by scanning the `quota-user-counters` KV store) |
+| `skippedUsers` | List\<String\> | Unknown users that were skipped (always empty when `scope="all"`) |
+| `userTotals` | Map\<String,Long\> | Final per-user byte totals. **Only users with `> 0` bytes are included.** |
+
+Registering a listener:
+
+```xml
+<extension target="org.nuxeo.ecm.core.event.EventServiceComponent" point="listener">
+  <listener name="myUserQuotaRecomputeListener"
+            class="com.example.MyListener"
+            async="false"
+            postCommit="false">
+    <event>userQuotaRecomputeDone</event>
+  </listener>
+</extension>
+```
+
+Caveats:
+
+- Delivery is **synchronous** (fired from the completion `Work` thread, category `quota`). Keep listeners lightweight and never throw.
+- The completion `Work` (`UserQuotaRecomputeCompletionWork`) waits up to **24 hours** for the BAF command. If it times out, the event is **not** fired and a `WARN` is logged.
+- The Work blocks one thread of the `quota` work queue for the duration of the recompute. If you frequently launch parallel recomputes, increase the `quota` queue size.
+
+##### Bulk import / migration — disabling enforcement
+
+For a large bulk import or migration, the per-user quota listener can add measurable overhead per document write. Disable it for the duration of the import, then recompute the affected users' counters.
+
+**Option 1 — Global disable via configuration (recommended for mass imports):**
+
+```ini
+# nuxeo.conf
+nuxeo.quota.user.disabled=true
+```
+
+Requires `nuxeoctl restart`. When set, the listener performs no work (no enforcement, no counter updates).
+
+Recipe:
+
+1. Set `nuxeo.quota.user.disabled=true` in `nuxeo.conf` → `nuxeoctl restart`.
+2. Run the mass import (note which user(s) are recorded as `dc:creator`).
+3. Remove the property (or set to `false`) → `nuxeoctl restart`.
+4. Run `Quota.User.RecomputeUsers` with the importer user list, or `Quota.User.RecomputeAll` for a full repository recompute.
+
+**Option 2 — Programmatic from plugin code:**
+
+```java
+var svc = Framework.getService(UserQuotaService.class);
+svc.setEnabled(false);
+try {
+    // ... bulk operation ...
+} finally {
+    svc.setEnabled(true);
+}
+```
+
+Per-node, transient, lost on restart. Use for short programmatic operations.
+
+**Option 3 — Per-document bypass:**
+
+Reuses the platform's container-quota context-data flag, so existing code that disables container quota also disables per-user quota:
+
+```java
+doc.putContextData(AbstractQuotaStatsUpdater.DISABLE_QUOTA_CHECK_LISTENER, Boolean.TRUE);
+session.saveDocument(doc);
+```
 
 ##### Storage
 
@@ -127,7 +229,7 @@ In production these are automatically backed by the configured `default` key/val
 You should not need to use these operations, they are listed here FYI.
 
 | Operation ID | Purpose |
-|---|---|
+|---|---|---|
 | `Quota.User.GetConfiguration` | Read XML defaults + all group/user overrides (admin) |
 | `Quota.User.GetForCurrentUser` | Resolved limits + current usage for the caller |
 | `Quota.User.GetForUser` | Resolved limits + usage for any user (admin) |
@@ -135,7 +237,8 @@ You should not need to use these operations, they are listed here FYI.
 | `Quota.User.ClearGroupOverride` | Remove a group-level override (admin) |
 | `Quota.User.SetUserOverride` | Create/update a user-level override (admin) |
 | `Quota.User.ClearUserOverride` | Remove a user-level override (admin) |
-| `Quota.User.RecomputeForUser` | Recompute the counter for one user (admin) |
+| `Quota.User.RecomputeUsers` | Recompute counters for specific user(s) — BAF (admin) |
+| `Quota.User.RecomputeAll` | Recompute counters for all users — BAF (admin) |
 
 ## Known Issue(s)
 

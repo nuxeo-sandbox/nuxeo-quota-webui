@@ -16,6 +16,7 @@ Contributors:
   Thibaud Arguillere (thibarg)
 -->
 <link rel="import" href="nuxeo-quota-behavior.html">
+<link rel="import" href="nuxeo-quota-limit-setter.html">
 <dom-module id="nuxeo-quota-user-config">
   <template>
     <style include="iron-flex iron-flex-alignment nuxeo-styles">
@@ -54,6 +55,8 @@ Contributors:
     <nuxeo-operation id="clearGroupOverrideOp" op="Quota.User.ClearGroupOverride"></nuxeo-operation>
     <nuxeo-operation id="clearUserOverrideOp" op="Quota.User.ClearUserOverride"></nuxeo-operation>
     <nuxeo-operation id="getForUserOp" op="Quota.User.GetForUser"></nuxeo-operation>
+    <nuxeo-operation id="recomputeUsersOp" op="Quota.User.RecomputeUsers"></nuxeo-operation>
+    <nuxeo-operation id="recomputeAllOp" op="Quota.User.RecomputeAll"></nuxeo-operation>
 
     <nuxeo-card heading="[[i18n('label.quota.user.config')]]" class="actionCard">
       <paper-tabs selected="{{selectedTab}}" attr-for-selected="tab-name">
@@ -152,6 +155,27 @@ Contributors:
         </div>
       </iron-pages>
 
+      <!-- ==================== Recompute per-user counters ==================== -->
+      <nuxeo-card heading="[[i18n('label.quota.user.recompute')]]" style="margin-top: 16px;">
+        <div class="info" style="font-size: smaller; margin-bottom: 8px;">
+          [[i18n('label.quota.user.recompute.help')]]
+        </div>
+        <div class="layout horizontal center" style="gap: 8px;">
+          <paper-input label="[[i18n('label.quota.user.recompute.users.input')]]"
+                       value="{{_recomputeUsersInput}}"
+                       placeholder="alice,bob,svc-import"
+                       style="flex: 1;"></paper-input>
+          <paper-button class="secondary" on-tap="_recomputeUsers"
+                        disabled$="[[_recomputeBusy]]">
+            [[i18n('action.quota.user.recompute.users')]]
+          </paper-button>
+          <paper-button class="secondary" on-tap="_recomputeAll"
+                        disabled$="[[_recomputeBusy]]">
+            [[i18n('action.quota.user.recompute.all')]]
+          </paper-button>
+        </div>
+      </nuxeo-card>
+
       <!-- Edit dialog -->
       <paper-dialog id="editDialog" modal>
         <h2>[[_editTitle]]</h2>
@@ -159,9 +183,9 @@ Contributors:
             id="limitSetter"
             target="{{_editTarget}}"
             target-name="{{_editTargetName}}"
-            current-max-upload="{{_editMaxUpload}}"
-            current-max-total="{{_editMaxTotal}}"
-            read-only="false"
+            current-max-upload="[[_editMaxUpload]]"
+            current-max-total="[[_editMaxTotal]]"
+            read-only="[[_alwaysEditable]]"
             on-saved="_onEditSaved"></nuxeo-quota-limit-setter>
         <div class="buttons">
           <paper-button dialog-dismiss>Cancel</paper-button>
@@ -187,7 +211,11 @@ Contributors:
         _editMaxUpload: Number,
         _editMaxTotal: Number,
         _editTitle: String,
-        _usageCache: Object
+        _usageCache: Object,
+        _recomputeUsersInput: String,
+        _recomputeBusy: { type: Boolean, value: false },
+        _recomputeCommandId: String,
+        _alwaysEditable: { type: Boolean, value: false }
       },
 
       _mergedGroupRows: function(xmlDefaults, groupOverrides) {
@@ -313,7 +341,7 @@ Contributors:
             this.fire('notify', { message: "Group override cleared." });
           }.bind(this))
           .catch(function(err) {
-            alert("Error: " + err);
+            this.fire('notify', { message: 'Failed to clear group override: ' + err, type: 'error' });
           }.bind(this))
       },
 
@@ -327,7 +355,7 @@ Contributors:
             this.fire('notify', { message: "User override cleared." });
           }.bind(this))
           .catch(function(err) {
-            alert("Error: " + err);
+            this.fire('notify', { message: 'Failed to clear user override: ' + err, type: 'error' });
           }.bind(this))
       },
 
@@ -356,6 +384,61 @@ Contributors:
             // Silently ignore
           }.bind(this))
         return "...";
+      },
+
+      /* ==================== Recompute handlers ==================== */
+
+      _recomputeUsers: function() {
+        if (!this._recomputeUsersInput || !this._recomputeUsersInput.trim()) {
+          return;
+        }
+        var users = this._recomputeUsersInput.split(',').map(function(s) {
+          return s.trim();
+        }).filter(function(s) { return s.length > 0; });
+        if (users.length === 0) {
+          return;
+        }
+        var op = this.$.recomputeUsersOp;
+        op.params = { users: users.join('\n') };
+        this._submitRecompute(op);
+      },
+
+      _recomputeAll: function() {
+        this._submitRecompute(this.$.recomputeAllOp);
+      },
+
+      _submitRecompute: function(op) {
+        this._recomputeBusy = true;
+        op.execute()
+          .then(function(result) {
+            // Operation returns a JSON blob; nuxeo-operation parses it when content-type is JSON
+            var payload = (result && typeof result === 'object') ? result : null;
+            var cmdId = payload && payload.commandId ? payload.commandId : '?';
+            this._recomputeCommandId = cmdId;
+            this.fire('notify', { message: this.i18n('label.quota.user.recompute.submitted', cmdId) });
+            // Poll for completion: BAF status via /api/v1/management/bulk-actions/{commandId} not always
+            // available in older platforms; instead, refresh the config card after a short delay and
+            // again at 5/15/30s so the user sees updated counters as the BAF progresses.
+            this._scheduleRecomputeRefresh([3000, 10000, 30000]);
+          }.bind(this))
+          .catch(function(err) {
+            this._recomputeBusy = false;
+            this.fire('notify', { message: "Recompute failed: " + err });
+          }.bind(this));
+      },
+
+      _scheduleRecomputeRefresh: function(delaysMs) {
+        var self = this;
+        delaysMs.forEach(function(delay, idx) {
+          setTimeout(function() {
+            self._usageCache = {}; // bust the per-user usage cache
+            self.$.getConfigOp.execute();
+            if (idx === delaysMs.length - 1) {
+              self._recomputeBusy = false;
+              self.fire('notify', { message: self.i18n('label.quota.user.recompute.done', '?', '?') });
+            }
+          }, delay);
+        });
       }
     });
   </script>

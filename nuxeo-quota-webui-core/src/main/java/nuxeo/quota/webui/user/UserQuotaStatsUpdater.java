@@ -27,12 +27,14 @@ import org.apache.logging.log4j.Logger;
 import org.nuxeo.ecm.core.api.Blob;
 import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.core.api.DocumentModel;
-import org.nuxeo.ecm.core.api.NuxeoPrincipal;
+import org.nuxeo.ecm.core.api.DocumentRef;
+import org.nuxeo.ecm.core.api.UnrestrictedSessionRunner;
+import org.nuxeo.ecm.core.api.event.DocumentEventTypes;
 import org.nuxeo.ecm.core.event.Event;
 import org.nuxeo.ecm.core.utils.BlobsExtractor;
-import org.nuxeo.ecm.platform.usermanager.UserManager;
 import org.nuxeo.ecm.quota.AbstractQuotaStatsUpdater;
 import org.nuxeo.ecm.quota.QuotaStatsInitialWork;
+import org.nuxeo.ecm.quota.size.DocumentsSizeUpdater;
 import org.nuxeo.ecm.quota.size.QuotaExceededException;
 import org.nuxeo.ecm.quota.size.QuotaSizeService;
 import org.nuxeo.runtime.api.Framework;
@@ -85,19 +87,25 @@ public class UserQuotaStatsUpdater extends AbstractQuotaStatsUpdater {
 
     @Override
     protected void processDocumentBeforeUpdate(CoreSession session, DocumentModel doc) {
-        // Compute delta = new blobs - old blobs
+        // BEFORE_DOC_UPDATE fires with the modified DocumentModel already bound.
+        // To get the old blob sizes, re-read the previous state from storage
+        // using an unrestricted session.
         var newSize = getBlobsSize(doc);
-        // old inner size stored on the QuotaAware facet (but we don't have one for user quota)
-        // Instead, compute from the previous property values (same pattern as DocumentsSizeUpdater)
-        long oldSize = 0;
-        var extractor = newBlobsExtractor();
-        var oldBlobs = extractor.getBlobs(doc);
-        if (oldBlobs != null) {
-            for (var b : oldBlobs) {
-                oldSize += b.getLength();
+        var oldSizeRef = new long[]{0};
+        new UnrestrictedSessionRunner(session.getRepositoryName()) {
+            @Override
+            public void run() {
+                var oldDoc = session.getDocument(doc.getRef());
+                var extractor = newBlobsExtractor();
+                var blobs = extractor.getBlobs(oldDoc);
+                if (blobs != null) {
+                    for (var b : blobs) {
+                        oldSizeRef[0] += b.getLength();
+                    }
+                }
             }
-        }
-        var delta = newSize - oldSize;
+        }.runUnrestricted();
+        var delta = newSize - oldSizeRef[0];
         if (delta == 0) {
             return;
         }
@@ -184,6 +192,25 @@ public class UserQuotaStatsUpdater extends AbstractQuotaStatsUpdater {
         if (doc == null || doc.isProxy()) {
             return false;
         }
+        // Check global disable (Framework property or programmatic toggle)
+        var service = Framework.getService(UserQuotaService.class);
+        if (service == null || !service.isEnabled()) {
+            return false;
+        }
+        // Check per-document context-data bypass (reuses platform's container-quota constant)
+        if (Boolean.TRUE.equals(doc.getContextData(
+                DocumentsSizeUpdater.DISABLE_QUOTA_CHECK_LISTENER))) {
+            return false;
+        }
+        // Fast path for create events: skip docs with no blobs at all
+        var name = event.getName();
+        if (DocumentEventTypes.DOCUMENT_CREATED.equals(name)
+                || DocumentEventTypes.DOCUMENT_CREATED_BY_COPY.equals(name)) {
+            var blobs = newBlobsExtractor().getBlobs(doc);
+            if (blobs == null || blobs.isEmpty()) {
+                return false;
+            }
+        }
         return true;
     }
 
@@ -194,13 +221,8 @@ public class UserQuotaStatsUpdater extends AbstractQuotaStatsUpdater {
         if (creator == null) {
             return;
         }
-        var userManager = Framework.getService(UserManager.class);
-        var p = userManager.getPrincipal(creator);
-        if (p == null) {
-            return;
-        }
         var quotaService = Framework.getService(UserQuotaService.class);
-        var limits = quotaService.getEffectiveLimits(p, session.getRepositoryName());
+        var limits = quotaService.getEffectiveLimitsForUser(creator, session.getRepositoryName());
 
         if (limits.isAdminBypass()) {
             // Track admin bytes for visibility but never enforce
@@ -242,16 +264,11 @@ public class UserQuotaStatsUpdater extends AbstractQuotaStatsUpdater {
         if (creator == null) {
             return;
         }
-        var userManager = Framework.getService(UserManager.class);
-        var p = userManager.getPrincipal(creator);
-        if (p == null) {
-            return;
-        }
         var quotaService = Framework.getService(UserQuotaService.class);
-        var limits = quotaService.getEffectiveLimits(p, session.getRepositoryName());
+        var limits = quotaService.getEffectiveLimitsForUser(creator, session.getRepositoryName());
 
         if (limits.isAdminBypass()) {
-            if (delta > 0) {
+            if (delta != 0) {
                 counter.addAndGet(session.getRepositoryName(), creator, delta);
             }
             return;
@@ -305,7 +322,20 @@ public class UserQuotaStatsUpdater extends AbstractQuotaStatsUpdater {
 
     @Override
     public void computeInitialStatistics(CoreSession session, QuotaStatsInitialWork currentWorker, String path) {
-        var work = new UserQuotaInitialComputationWork(session.getRepositoryName());
+        var repo = session.getRepositoryName();
+        // Reset all counters before recomputing the whole repository
+        counter.resetAllForRepository(repo);
+        // Submit the BAF command for whole-repository recompute
+        var nxql = "SELECT * FROM Document WHERE ecm:isProxy = 0 AND ecm:isVersion = 0 AND ecm:isTrashed IN (0,1)";
+        var command = new org.nuxeo.ecm.core.bulk.message.BulkCommand.Builder(
+                UserQuotaInitialComputationAction.ACTION_NAME, nxql, "system")
+                .repository(repo)
+                .param(UserQuotaInitialComputationAction.PARAM_TRIGGERED_BY, "system")
+                .build();
+        var commandId = Framework.getService(org.nuxeo.ecm.core.bulk.BulkService.class).submit(command);
+        // Schedule the completion Work so the userQuotaRecomputeDone event fires on this path too
+        var work = new UserQuotaRecomputeCompletionWork(repo, commandId, "all",
+                new java.util.ArrayList<>(), new java.util.ArrayList<>(), new java.util.ArrayList<>());
         Framework.getService(org.nuxeo.ecm.core.work.api.WorkManager.class).schedule(work);
     }
 }

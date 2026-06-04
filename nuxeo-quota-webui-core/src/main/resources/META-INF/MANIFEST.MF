@@ -9,5 +9,7 @@ Bundle-SymbolicName: nuxeo.quota.webui.nuxeo-quota-webui-core;singleton=true
 Nuxeo-Component: OSGI-INF/operations-contrib.xml,
  OSGI-INF/user-quota-service.xml,
  OSGI-INF/quotastats-user-contrib.xml,
- OSGI-INF/userquota-defaults-contrib.xml
+ OSGI-INF/userquota-defaults-contrib.xml,
+ OSGI-INF/cache-contrib.xml,
+ OSGI-INF/bulk-action-framework-contrib.xml
 

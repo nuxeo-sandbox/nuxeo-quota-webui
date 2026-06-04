@@ -15,7 +15,8 @@
     <operation class="nuxeo.quota.webui.operations.user.QuotaUserSetUserOverride"/>
     <operation class="nuxeo.quota.webui.operations.user.QuotaUserClearGroupOverride"/>
     <operation class="nuxeo.quota.webui.operations.user.QuotaUserClearUserOverride"/>
-    <operation class="nuxeo.quota.webui.operations.user.QuotaUserRecomputeForUser"/>
+    <operation class="nuxeo.quota.webui.operations.user.QuotaUserRecomputeUsers"/>
+    <operation class="nuxeo.quota.webui.operations.user.QuotaUserRecomputeAll"/>
   </extension>
 
 </component>

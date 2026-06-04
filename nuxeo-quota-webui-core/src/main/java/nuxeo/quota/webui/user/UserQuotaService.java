@@ -29,6 +29,12 @@ import org.nuxeo.ecm.core.api.NuxeoPrincipal;
  */
 public interface UserQuotaService {
 
+    /** Framework property to globally disable the per-user quota listener. */
+    String PROPERTY_DISABLED = "nuxeo.quota.user.disabled";
+
+    /** Event fired when a user quota recompute completes. */
+    String EVENT_USER_QUOTA_RECOMPUTE_DONE = "userQuotaRecomputeDone";
+
     /** Effective limits for a principal, after applying overrides. */
     UserQuotaLimits getEffectiveLimits(NuxeoPrincipal p, String repositoryName);
 
@@ -37,4 +43,16 @@ public interface UserQuotaService {
 
     /** Convenience for ops layer; same as getEffectiveLimits but accepts a userId. */
     UserQuotaLimits getEffectiveLimitsForUser(String userId, String repositoryName);
+
+    /** @since 2025.1 */
+    boolean isEnabled();
+
+    /** @since 2025.1 */
+    void setEnabled(boolean enabled);
+
+    /** @since 2025.1 */
+    void invalidateCache();
+
+    /** @since 2025.1 */
+    void invalidateCacheForUser(String userId, String repositoryName);
 }

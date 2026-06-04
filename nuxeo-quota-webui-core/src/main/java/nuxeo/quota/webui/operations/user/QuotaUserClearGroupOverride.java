@@ -30,8 +30,10 @@ import org.nuxeo.ecm.core.api.Blob;
 import org.nuxeo.ecm.core.api.Blobs;
 import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.core.api.NuxeoException;
+import org.nuxeo.runtime.api.Framework;
 
 import nuxeo.quota.webui.user.UserQuotaOverrideStore;
+import nuxeo.quota.webui.user.UserQuotaService;
 
 /**
  * Clears a group override for one or both keys. Admin-only.
@@ -71,6 +73,9 @@ public class QuotaUserClearGroupOverride {
         } else {
             throw new NuxeoException("Invalid key: " + key, SC_BAD_REQUEST);
         }
+
+        // Invalidate limits cache — group changes can affect any user
+        Framework.getService(UserQuotaService.class).invalidateCache();
 
         var json = new JSONObject();
         json.put("cleared", true);

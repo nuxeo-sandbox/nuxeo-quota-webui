@@ -124,8 +124,8 @@ TODO: As several parts are shared with nuxeo-quota-for-document, something shoul
             .then(function(result) {
               // Nothing, _originalQuotaChanged() will be called
             }.bind(this))
-            .catch(function(error) {
-              alert("An error occured:\n" + error)
+            .catch(function(err) {
+              this.fire('notify', { message: 'Failed to load container quota: ' + err, type: 'error' });
             }.bind(this))
         }
       },
@@ -164,7 +164,7 @@ TODO: As several parts are shared with nuxeo-quota-for-document, something shoul
         let valueBytes = this.getValueBytes(this.quotaValue, this.quotaUnit);
         if(this.originalQuota && valueBytes > this.originalQuota.maxQuotaSize) {
           
-          alert("Value can't be greater than " + this.originalQuota.maxQuotaSizeStr);
+          this.fire('notify', { message: "Value can't be greater than " + this.originalQuota.maxQuotaSizeStr });
           let valueAndUnit = this.formatBytes(this.originalQuota.maxQuotaSize);
           this.quotaValue = valueAndUnit.value;
           this.quotaUnit = valueAndUnit.unit;
@@ -188,7 +188,7 @@ TODO: As several parts are shared with nuxeo-quota-for-document, something shoul
         let maxSizeBytes = null;
         let msg;
         if(this.quotaValue <= 0 || !this.quotaUnit) {
-          alert("Invalid value: <" + this.quotaValue + " " + this.quotaUnit + ">");
+          this.fire('notify', { message: "Invalid value: <" + this.quotaValue + " " + this.quotaUnit + ">" });
         } else {
           if(confirm("Set max quota for this container (" + this.document.title + ") to " + this.quotaValue + " " + this.quotaUnit + "?")) {
             maxSizeBytes = this.getValueBytes(this.quotaValue, this.quotaUnit);
@@ -206,8 +206,8 @@ TODO: As several parts are shared with nuxeo-quota-for-document, something shoul
                 this._documentChanged(this.document);
               }.bind(this))
               .catch(function(err) {
-                alert("An error occured: " + err);
-              })
+                this.fire('notify', { message: 'Failed to set quota: ' + err, type: 'error' });
+              }.bind(this))
           }
         },
 
@@ -224,8 +224,8 @@ TODO: As several parts are shared with nuxeo-quota-for-document, something shoul
               // Force refresh values (the operation returns the value of the quota)
               this._documentChanged(this.document);
             }.bind(this))
-            .catch(function(error) {
-              alert("An error occured: " + err);
+            .catch(function(err) {
+              this.fire('notify', { message: 'Failed to disable quota: ' + err, type: 'error' });
             }.bind(this));
         }
     });

@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.nuxeo.runtime.api.Framework;
@@ -78,15 +79,16 @@ public class UserQuotaOverrideStore {
         return listOverrides(groupStore(), repo);
     }
 
-    /**
-     * Collect existing override values for a set of groups and a given key.
-     * Used by the resolution algorithm to gather all values before max-wins.
-     */
+    /** Batch get group overrides for the given groups and key. */
     public List<Long> collectGroupOverrides(String repo, List<String> groups, String key) {
-        var values = new ArrayList<Long>();
         var store = groupStore();
-        for (String g : groups) {
-            readOptional(store, buildKey(repo, g, key)).ifPresent(values::add);
+        var keys = groups.stream().map(g -> buildKey(repo, g, key)).collect(Collectors.toList());
+        var batch = store.getLongs(keys);
+        var values = new ArrayList<Long>();
+        for (var entry : batch.entrySet()) {
+            if (entry.getValue() != null) {
+                values.add(entry.getValue());
+            }
         }
         return values;
     }
@@ -142,27 +144,34 @@ public class UserQuotaOverrideStore {
 
     /**
      * List all overrides whose key starts with {@code repo:}. Parses the key format
-     * {@code repo:entity:key} into a nested map.
+     * {@code repo:entity:key} into a nested map using a single batch get.
      */
     protected Map<String, Map<String, Long>> listOverrides(KeyValueStore store, String repo) {
         var result = new HashMap<String, Map<String, Long>>();
         var prefix = repo + ":";
         var provider = (KeyValueStoreProvider) store;
-        try (Stream<String> keys = provider.keyStream(prefix)) {
-            keys.forEach(k -> {
-                // k = "repo:entity:key"
-                var suffix = k.substring(prefix.length()); // "entity:key"
-                var colon = suffix.indexOf(':');
-                if (colon < 0) {
-                    return;
-                }
-                var entity = suffix.substring(0, colon);
-                var key = suffix.substring(colon + 1);
-                var val = store.getLong(k);
-                if (val != null) {
-                    result.computeIfAbsent(entity, e -> new HashMap<>()).put(key, val);
-                }
-            });
+        List<String> keys;
+        try (Stream<String> ks = provider.keyStream(prefix)) {
+            keys = ks.collect(Collectors.toList());
+        }
+        if (keys.isEmpty()) {
+            return result;
+        }
+        var batch = store.getLongs(keys);
+        for (var entry : batch.entrySet()) {
+            var val = entry.getValue();
+            if (val == null) {
+                continue;
+            }
+            var k = entry.getKey();
+            var suffix = k.substring(prefix.length());
+            var colon = suffix.indexOf(':');
+            if (colon < 0) {
+                continue;
+            }
+            var entity = suffix.substring(0, colon);
+            var key = suffix.substring(colon + 1);
+            result.computeIfAbsent(entity, e -> new HashMap<>()).put(key, val);
         }
         return result;
     }

@@ -27,22 +27,34 @@ Contributors:
         border-style: solid;
         border-color: lightgray;
       }
+
+      .info {
+        font-size: smaller;
+      }
     </style>
 
     <nuxeo-operation id="quotasStatsOp" op="Quotas.GetStatistics" response="{{stats}}"></nuxeo-operation>
 
     <nuxeo-card heading="Quota for '[[_getDocTitle(document)]]'" class="actionCard">
       <template is="dom-if" if="[[_hasDocument(document)]]">
-        <chart-pie values="[[_quotasChartData(analytics, 'values')]]"
-                    labels="[[_quotasChartData(analytics, 'labels')]]"
-                    options="[[_quotasChartOptions()]]">
-        </chart-pie>
+        <template is="dom-if" if="[[noStats]]">
+          <div class="info">[[i18n('label.quota.error.display')]]</div>
+        </template>
+        <template is="dom-if" if="[[!noStats]]">
+          <chart-pie values="[[_quotasChartData(analytics, 'values')]]"
+                      labels="[[_quotasChartData(analytics, 'labels')]]"
+                      options="[[_quotasChartOptions()]]">
+          </chart-pie>
+        </template>
       </template>
     </nuxeo-card>
 
   </template>
 
   <script>
+    // See org.nuxeo.ecm.quota.size.QuotaAwareDocument.DOCUMENTS_SIZE_STATISTICS_FACET
+    const STATS_FACET = 'DocumentsSizeStatistics';
+
     Polymer({
       is: 'nuxeo-quota-stats',
       behaviors: [Nuxeo.LayoutBehavior],
@@ -54,6 +66,10 @@ Contributors:
         analytics: {
           type: Object,
           value: null
+        },
+        noStats: {
+          type: Boolean,
+          value: false
         },
         defaultChartOptions: {
           type: Object,
@@ -113,35 +129,46 @@ Contributors:
       },
 
       _documentChanged: function(doc) {
-        if(doc) {
-          let op = this.$.quotasStatsOp;
-          op.params = {
-            documentRef: doc.uid
-          };
-          op.execute()
-            .then(function(result) {
-              /* See GetQuotaStatisticsOperation java code. We recevie sometuing like:
- [
-  {
-    "label": "Live Documents Size:2.16 MBytes",
-    "data": 2261560
-  },
-  {
-    "label": "Trash Size:0 KBytes",
-    "data": 0
-  },
-  {
-    "label": "Archived Versions Size:0 KBytes",
-    "data": 0
-  }
+        if(!doc) {
+          return;
+        }
+        // Quotas.GetStatistics throws "Quota not activated on doc" when the platform's
+        // DocumentsSizeStatistics facet is missing (i.e. before the documentsSizeUpdater
+        // initial computation has ever run on this document tree). Gate the call to
+        // avoid a 500 and show a friendly hint instead.
+        if(!this.hasFacet(doc, STATS_FACET)) {
+          this.analytics = null;
+          this.noStats = true;
+          return;
+        }
+        this.noStats = false;
+        let op = this.$.quotasStatsOp;
+        op.params = {
+          documentRef: doc.uid
+        };
+        op.execute()
+          .then(function(result) {
+            /* See GetQuotaStatisticsOperation java code. We recevie sometuing like:
+[
+ {
+   "label": "Live Documents Size:2.16 MBytes",
+   "data": 2261560
+ },
+ {
+   "label": "Trash Size:0 KBytes",
+   "data": 0
+ },
+ {
+   "label": "Archived Versions Size:0 KBytes",
+   "data": 0
+ }
 ]
 */
-              this.analytics = result;
-            }.bind(this))
-            .catch(function(err) {
-              alert("An error occured: " + err);
-            }.bind(this))
-        }
+            this.analytics = result;
+          }.bind(this))
+          .catch(function(err) {
+            this.fire('notify', { message: 'Failed to load quota statistics: ' + err, type: 'error' });
+          }.bind(this))
       },
 
       _quotasChartData: function(analytics, what) {

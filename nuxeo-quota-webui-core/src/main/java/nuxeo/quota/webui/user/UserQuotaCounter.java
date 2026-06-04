@@ -18,9 +18,14 @@
  */
 package nuxeo.quota.webui.user;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.nuxeo.ecm.core.api.NuxeoException;
 import org.nuxeo.runtime.api.Framework;
 import org.nuxeo.runtime.kv.KeyValueService;
 import org.nuxeo.runtime.kv.KeyValueStore;
+import org.nuxeo.runtime.kv.KeyValueStoreProvider;
 
 /**
  * KV facade for per-user byte counters.
@@ -59,5 +64,36 @@ public class UserQuotaCounter {
 
     public void reset(String repo, String userId) {
         getStore().put(buildKey(repo, userId), (Long) null);
+    }
+
+    /** Reset all counters for the given repository. */
+    public void resetAllForRepository(String repo) {
+        var store = getStore();
+        if (store instanceof KeyValueStoreProvider provider) {
+            var prefix = repo + ":";
+            try (var keys = provider.keyStream(prefix)) {
+                keys.forEach(k -> provider.put(k, (Long) null));
+            }
+        } else {
+            throw new NuxeoException("Cannot reset all counters: store is not a KeyValueStoreProvider");
+        }
+    }
+
+    /**
+     * Returns the list of userIds that currently have a counter entry for the given repository.
+     *
+     * @since 2025.1
+     */
+    public List<String> listUsersForRepository(String repo) {
+        var store = getStore();
+        if (!(store instanceof KeyValueStoreProvider provider)) {
+            throw new NuxeoException("Cannot list users: store is not a KeyValueStoreProvider");
+        }
+        var prefix = repo + ":";
+        var users = new ArrayList<String>();
+        try (var keys = provider.keyStream(prefix)) {
+            keys.forEach(k -> users.add(k.substring(prefix.length())));
+        }
+        return users;
     }
 }

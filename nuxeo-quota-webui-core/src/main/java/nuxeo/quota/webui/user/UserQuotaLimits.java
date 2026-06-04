@@ -18,12 +18,14 @@
  */
 package nuxeo.quota.webui.user;
 
+import java.io.Serializable;
+
 /**
  * Effective per-user quota limits after resolution.
  *
  * @since 2025.1
  */
-public record UserQuotaLimits(long maxUploadSize, long maxTotalQuota, String source, String matchedGroup) {
+public record UserQuotaLimits(long maxUploadSize, long maxTotalQuota, String source, String matchedGroup) implements Serializable {
 
     public static final String SOURCE_ADMIN_BYPASS = "admin-bypass";
     public static final String SOURCE_USER_OVERRIDE = "user-override";

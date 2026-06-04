@@ -32,8 +32,10 @@ import org.nuxeo.ecm.core.api.Blob;
 import org.nuxeo.ecm.core.api.Blobs;
 import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.core.api.NuxeoException;
+import org.nuxeo.runtime.api.Framework;
 
 import nuxeo.quota.webui.user.UserQuotaOverrideStore;
+import nuxeo.quota.webui.user.UserQuotaService;
 
 /**
  * Sets a group override for maxUploadSize and/or maxTotalQuota. Admin-only.
@@ -75,6 +77,9 @@ public class QuotaUserSetGroupOverride {
         if (maxTotalQuota != null) {
             store.setGroupOverride(repo, group, UserQuotaOverrideStore.K_MAX_TOTAL, parseSize(maxTotalQuota));
         }
+
+        // Invalidate limits cache — group changes can affect any user
+        Framework.getService(UserQuotaService.class).invalidateCache();
 
         // Echo back
         var json = new JSONObject();

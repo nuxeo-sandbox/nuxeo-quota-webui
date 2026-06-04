@@ -153,15 +153,6 @@ Contributors:
 
       _computeInitialStatistics:function(evt) {
 
-        let zeop = this.$.quotasStatsOp;
-
-
-
-
-
-
-
-
         let updater = this.updaters[evt.target.idx];
         if(confirm("Launch the asynchronous '" + updater.label + "' work?")) {
           let op = this.$.launchInitialComputationOp;
@@ -175,7 +166,7 @@ Contributors:
               this.$.getStatusOp.execute();
             }.bind(this))
             .catch(function(err) {
-              alert("An error occured: " + err);
+              this.fire('notify', { message: 'Failed to launch initial computation: ' + err, type: 'error' });
             }.bind(this))
         }
       }

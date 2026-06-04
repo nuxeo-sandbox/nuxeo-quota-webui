@@ -55,5 +55,12 @@
   "user.quota.updater.label": "Per-user quota",
   "user.quota.updater.description": "Tracks total bytes owned by each user and enforces per-user upload size and total quota.",
   "error.quota.user.upload-too-large": "File exceeds the per-user upload size limit.",
-  "error.quota.user.quota-exceeded": "Your user quota has been reached."
+  "error.quota.user.quota-exceeded": "Your user quota has been reached.",
+  "label.quota.user.recompute": "Recompute per-user counters",
+  "label.quota.user.recompute.help": "Recompute byte counters from scratch. The recompute runs asynchronously via the Bulk Action Framework; a notification will be shown when it completes.",
+  "label.quota.user.recompute.users.input": "User IDs (comma-separated)",
+  "action.quota.user.recompute.users": "Recompute selected users",
+  "action.quota.user.recompute.all": "Recompute all users",
+  "label.quota.user.recompute.submitted": "Per-user counter recompute submitted (command {0}).",
+  "label.quota.user.recompute.done": "Per-user counter recompute completed: {0} user(s) processed, {1} skipped."
 }

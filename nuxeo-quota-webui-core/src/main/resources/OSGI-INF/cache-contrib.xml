@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<component name="nuxeo.quota.webui.user.cache" version="1.0">
+  <require>org.nuxeo.ecm.core.cache.CacheService</require>
+  <extension target="org.nuxeo.ecm.core.cache.CacheService" point="caches">
+    <cache name="quota-user-limits">
+      <!-- Nuxeo CacheDescriptor expresses TTL in minutes; sub-minute TTL is not supported. -->
+      <ttl>${nuxeo.quota.user.cache.ttl.minutes:=1}</ttl>
+      <option name="maxSize">${nuxeo.quota.user.cache.maxsize:=10000}</option>
+    </cache>
+  </extension>
+</component>
