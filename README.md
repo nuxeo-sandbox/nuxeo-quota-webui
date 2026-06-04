@@ -20,6 +20,10 @@ Basically:
 * Per-user **per-blob upload size cap**
 * (Configurable with XML contribution, and can be modified by an administrator in the UI)
 
+> [!CAUTION]
+> This new Per-user Quota has not yet been tested besides unit-tests => we recommend you don't use this feature yet.
+> (This alert will be remonved once tests in a Nuxeo Server has been done)
+
 ## Usage
 
 #### "Quota / Statistics" Admin panel
@@ -181,7 +185,7 @@ nuxeo-quota-webui-package/target/nuxeo-quota-webui-package-{VERSION}}-*.zip
 
 Install it via `nuxeoctl`:
 ```bash
-nuxeoctl mp-install nuxeo-quota-webui-package-{VERSION}.zip
+nuxeoctl mp-install /path/to/nuxeo-quota-webui-package-{VERSION}.zip
 ```
 
 ### Deploy from Nuxeo Marketplace
