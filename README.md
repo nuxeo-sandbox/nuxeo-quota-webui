@@ -11,6 +11,18 @@ Basically:
 * Move the deprecated JSF code found at `countQuotaStatsActions.java` (nuxeo-jsf-ui-lts/code/nuxeo-quota-web/src/main/java/org/nuxeo/ecm/quota/countQuotaStatsActions.java) to some operations (to get/set quota on User Workspaces, etc.)
 * Add the different polymer elements required by the UI.
 
+**Parity with the legacy JSF plugin:**
+* "Quotas / Statistics" Admin Center page (pie-chart stats, User Workspace quota activation, initial computation)
+* "Quota / Statistics" tab on containers (`Domain`, `Workspace`, configurable)
+
+**New features (not available in the legacy JSF `nuxeo-quota` plugin):**
+* Per-user **total quota** (sum of bytes owned via `dc:creator`)
+* Per-user **per-blob upload size cap**
+* XML defaults per group + live admin overrides per group and per user (no restart)
+* End-user "My quota usage" widget in the user menu
+* Cluster-shared storage via `KeyValueService`
+* Dedicated `Quota.User.*` Automation operations
+
 See below "Possible `TODO`".
 
 > [!IMPORTANT]
@@ -48,25 +60,84 @@ When available for document, it displays "Quota / Statistics" tab with:
 
 #### Per-user Upload Size and Per-user Quota
 
-Two features:
-- **Per-blob upload size cap**: each individual file (blob) is checked against the user's `maxUploadSize` limit.
-- **Per-user total quota**: the sum of all blob bytes owned by a user (keyed by `dc:creator`) is checked against `maxTotalQuota`.
+> [!NOTE]
+> These per-user features did **not** exist in the legacy JSF `nuxeo-quota` plugin. They are added by this plugin and live alongside the original container-level quota.
 
-Limits are configured via the `userQuotas` extension point on `nuxeo.quota.webui.user.UserQuotaService`:
+Two enforcement mechanisms:
+
+- **Per-blob upload size cap** — each individual file (blob) is checked against the user's effective `maxUploadSize`.
+- **Per-user total quota** — the sum of all blob bytes owned by a user (keyed by `dc:creator`) is checked against the user's effective `maxTotalQuota`.
+
+**Owner attribution gotcha.** Bytes are always counted against `dc:creator` of the document — never the editor. Because Nuxeo resets `dc:creator` on copy, copying a document counts those bytes against the user who performed the copy, not the original creator.
+
+##### XML defaults
+
+Configured via the `userQuotas` extension point on `nuxeo.quota.webui.user.UserQuotaService`:
 
 ```xml
 <userQuota group="*" maxUploadSize="-1" maxTotalQuota="-1"/>
 <userQuota group="members" maxUploadSize="50 MB" maxTotalQuota="2 GB"/>
 ```
 
-Resolution order (per key): user override → group overrides (max-wins) → XML group defaults (max-wins) → XML `*` default → unlimited.
-Administrators bypass enforcement. `-1` means unlimited.
+##### Resolution order
 
-The Admin Center ("Quotas / Statistics") has a new "User Quotas" card where administrators can override limits per group AND per user. Changes take effect immediately (no restart required).
+For each limit key (`maxUploadSize`, `maxTotalQuota`):
 
-Initial computation can be launched from the Admin Center → "Compute Initial Statistics" → "Per-user quota".
+1. User override (if any)
+2. Group overrides for the user's groups — **max-wins**
+3. XML group defaults for the user's groups — **max-wins**
+4. XML `*` default
+5. Unlimited
 
-Counters are persisted in `KeyValueService` (production = MongoDB or SQL, cluster-shared).
+Administrators bypass enforcement. `-1` means **unlimited** (explicitly different from "no override / fall through").
+
+##### Admin Center — "User Quotas" card
+
+The "Quotas / Statistics" admin page has a new **User Quotas** card where administrators can:
+* View the resolved XML defaults
+* Add / edit / remove **group overrides**
+* Add / edit / remove **user overrides**
+
+Changes take effect immediately (no restart, no redeploy).
+
+![User Quotas admin card](readme-resources/user-quotas-admin-card.jpg)
+
+##### End-user "My quota usage" in the user menu
+
+A new entry is contributed to the user menu (`USER_MENU_ITEMS` slot) showing the current user their own used bytes, effective limit, and percentage. Users without a configured limit see an "unlimited" message.
+
+![User Quota in user menu](readme-resources/user-quotas-user-menu.jpg)
+
+##### Initial computation
+
+For an existing repository, launch a one-time computation from the Admin Center → **Compute Initial Statistics** → **Per-user quota**. It runs asynchronously as a `Work` (`UserQuotaInitialComputationWork`) and populates the per-user counters.
+
+![Initial computation](readme-resources/user-quotas-initial-compute.jpg)
+
+##### Storage
+
+Counters and overrides are persisted in `KeyValueService` named stores:
+
+| Store | Purpose |
+|---|---|
+| `quota-user-counters` | Per-user current byte total |
+| `quota-group-overrides` | Per-group live overrides |
+| `quota-user-overrides` | Per-user live overrides |
+
+In production these are automatically backed by the configured `default` key/value store (MongoDB or SQL) and are therefore **cluster-shared** with no extra configuration.
+
+##### Automation operations (`Quota.User.*`)
+
+| Operation ID | Purpose |
+|---|---|
+| `Quota.User.GetConfiguration` | Read XML defaults + all group/user overrides (admin) |
+| `Quota.User.GetForCurrentUser` | Resolved limits + current usage for the caller |
+| `Quota.User.GetForUser` | Resolved limits + usage for any user (admin) |
+| `Quota.User.SetGroupOverride` | Create/update a group-level override (admin) |
+| `Quota.User.ClearGroupOverride` | Remove a group-level override (admin) |
+| `Quota.User.SetUserOverride` | Create/update a user-level override (admin) |
+| `Quota.User.ClearUserOverride` | Remove a user-level override (admin) |
+| `Quota.User.RecomputeForUser` | Recompute the counter for one user (admin) |
 
 ## Known Issue(s)
 
@@ -83,7 +154,7 @@ If you don't see the labels ("action.activate.quota" instead of "Activate" for e
 
 
 #### Error Handling
-When a user uploads content that makes the container reaches its quota, the error displayed in the UI is not explicit. The creation dialog just displays that "an error occurred" (The error is explicit in `server.log`). We are missing some error bubbling and handling to make it clear to the end user that they reached the quota.
+When a user uploads content that makes the container reach its quota — or that exceeds the per-user `maxTotalQuota` / `maxUploadSize` — the error displayed in the UI is not explicit. The creation dialog just displays that "an error occurred" (the error is explicit in `server.log`). We are missing some error bubbling and handling to make it clear to the end user that they reached a quota.
 
 
 ## Possible `TODO`
