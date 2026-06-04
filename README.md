@@ -120,7 +120,7 @@ In production these are automatically backed by the configured `default` key/val
 
 ##### Automation operations (`Quota.User.*`)
 
-You should not ened to use these operaitons, they are listed here FYI.
+You should not need to use these operations, they are listed here FYI.
 
 | Operation ID | Purpose |
 |---|---|
