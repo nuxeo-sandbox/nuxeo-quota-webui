@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<component name="nuxeo.quota.webui.user.UserQuotaStatsUpdaterContrib">
+  <require>org.nuxeo.ecm.quota.QuotaStatsService</require>
+  <extension target="org.nuxeo.ecm.quota.QuotaStatsService" point="quotaStatsUpdaters">
+    <quotaStatsUpdater name="userQuotaUpdater"
+                       class="nuxeo.quota.webui.user.UserQuotaStatsUpdater"
+                       label="user.quota.updater.label"
+                       descriptionLabel="user.quota.updater.description"/>
+  </extension>
+</component>

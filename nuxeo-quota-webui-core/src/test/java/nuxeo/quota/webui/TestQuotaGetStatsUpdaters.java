@@ -55,12 +55,12 @@ public class TestQuotaGetStatsUpdaters {
 
     @Test
     public void shouldGetQuotaUpdaters() throws Exception {
-        OperationContext ctx = new OperationContext(session);
-        Blob blob = (Blob) automationService.run(ctx, QuotaGetStatsUpdaters.ID);
+        var ctx = new OperationContext(session);
+        var blob = (Blob) automationService.run(ctx, QuotaGetStatsUpdaters.ID);
         assertNotNull(blob);
-        
-        JSONArray jsonArr = new JSONArray(blob.getString());
+
+        var jsonArr = new JSONArray(blob.getString());
         assertNotNull(jsonArr);
-        assertEquals(2, jsonArr.length());
+        assertEquals(3, jsonArr.length());
     }
 }

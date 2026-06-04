@@ -1,0 +1,90 @@
+<!--
+(C) Copyright 2025 Hyland (http://hyland.com/) and contributors.
+Licensed under the Apache License, Version 2.0 (the 'License');
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an 'AS IS' BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+Contributors:
+  Thibaud Arguillere (thibarg)
+-->
+<link rel="import" href="nuxeo-quota-behavior.html">
+<dom-module id="nuxeo-quota-user-usage">
+  <template>
+    <style include="nuxeo-styles">
+      .usage-info {
+        padding: 8px 16px;
+        font-size: 13px;
+        color: var(--secondary-text-color);
+      }
+    </style>
+
+    <nuxeo-operation id="getQuotaOp" op="Quota.User.GetForCurrentUser" response="{{quotaInfo}}"></nuxeo-operation>
+
+    <div class="usage-info">
+      <template is="dom-if" if="[[_isLimited(quotaInfo)]]">
+        <span>[[_formatUsage(quotaInfo.usedBytes, quotaInfo.maxTotalQuota)]]</span>
+      </template>
+      <template is="dom-if" if="[[!_isLimited(quotaInfo)]]">
+        <span>[[_formatUnlimited(quotaInfo.usedBytes)]]</span>
+      </template>
+    </div>
+  </template>
+
+  <script>
+    Polymer({
+      is: 'nuxeo-quota-user-usage',
+      behaviors: [Nuxeo.LayoutBehavior, Nuxeo.QuotaBehavior],
+      properties: {
+        quotaInfo: {
+          type: Object,
+          observer: "_quotaInfoChanged"
+        }
+      },
+
+      attached: function() {
+        this.$.getQuotaOp.execute();
+      },
+
+      _quotaInfoChanged: function(info) {
+        // Optional: refresh periodically
+      },
+
+      _isLimited: function(info) {
+        return info && info.maxTotalQuota && info.maxTotalQuota > 0;
+      },
+
+      _formatUsage: function(used, total) {
+        if (!used && used !== 0) {
+          return "";
+        }
+        var usedStr = this._formatBytesShort(used);
+        var totalStr = this._formatBytesShort(total);
+        return this.i18n('label.quota.user.usage', usedStr, totalStr);
+      },
+
+      _formatUnlimited: function(used) {
+        if (!used && used !== 0) {
+          return "";
+        }
+        var usedStr = this._formatBytesShort(used);
+        return this.i18n('label.quota.user.usage.unlimited', usedStr);
+      },
+
+      _formatBytesShort: function(bytes) {
+        if (!bytes || bytes <= 0) {
+          return "0 B";
+        }
+        var vu = this.formatBytes(bytes);
+        return vu.value + " " + vu.unit;
+      }
+    });
+  </script>
+</dom-module>

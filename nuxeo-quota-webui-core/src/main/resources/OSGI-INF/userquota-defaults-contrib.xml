@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<component name="nuxeo.quota.webui.user.UserQuotaDefaults">
+  <require>nuxeo.quota.webui.user.UserQuotaService</require>
+  <extension target="nuxeo.quota.webui.user.UserQuotaService" point="userQuotas">
+    <userQuota group="*" maxUploadSize="-1" maxTotalQuota="-1"/>
+  </extension>
+</component>

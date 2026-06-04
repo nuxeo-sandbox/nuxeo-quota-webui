@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<component name="nuxeo.quota.webui.user.test.UserQuotaTestContrib">
+  <require>nuxeo.quota.webui.user.UserQuotaService</require>
+  <extension target="nuxeo.quota.webui.user.UserQuotaService" point="userQuotas">
+    <userQuota group="*" maxUploadSize="-1" maxTotalQuota="-1"/>
+    <userQuota group="members" maxUploadSize="50 MB" maxTotalQuota="2 GB"/>
+    <userQuota group="powerusers" maxUploadSize="200 MB" maxTotalQuota="10 GB"/>
+    <userQuota group="restricted" maxUploadSize="10 MB" maxTotalQuota="100 MB"/>
+  </extension>
+</component>

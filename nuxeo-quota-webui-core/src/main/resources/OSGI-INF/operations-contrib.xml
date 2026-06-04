@@ -8,6 +8,14 @@
     <operation class="nuxeo.quota.webui.operations.QuotaGetConfigurationAndInfo"/>
     <operation class="nuxeo.quota.webui.operations.QuotaSetOnUserWorkspaces"/>
     <operation class="nuxeo.quota.webui.operations.QuotaGetOnContainer"/>
+    <operation class="nuxeo.quota.webui.operations.user.QuotaUserGetConfiguration"/>
+    <operation class="nuxeo.quota.webui.operations.user.QuotaUserGetForCurrentUser"/>
+    <operation class="nuxeo.quota.webui.operations.user.QuotaUserGetForUser"/>
+    <operation class="nuxeo.quota.webui.operations.user.QuotaUserSetGroupOverride"/>
+    <operation class="nuxeo.quota.webui.operations.user.QuotaUserSetUserOverride"/>
+    <operation class="nuxeo.quota.webui.operations.user.QuotaUserClearGroupOverride"/>
+    <operation class="nuxeo.quota.webui.operations.user.QuotaUserClearUserOverride"/>
+    <operation class="nuxeo.quota.webui.operations.user.QuotaUserRecomputeForUser"/>
   </extension>
 
 </component>

@@ -34,11 +34,11 @@ public class QuotaConfigInfo {
 
     public static JSONObject getMaxQuotaSize() {
 
-        JSONObject maxSizeJson = new JSONObject();
+        var maxSizeJson = new JSONObject();
 
         long configuredMaxQuotaSize;
         // Max size and possible other config. parameters
-        String maxSizeStr = Framework.getProperty(QUOTA_MAX_SIZE_PROP, QUOTA_MAX_SIZE_DEFAULT);
+        var maxSizeStr = Framework.getProperty(QUOTA_MAX_SIZE_PROP, QUOTA_MAX_SIZE_DEFAULT);
         try {
             configuredMaxQuotaSize = SizeUtils.parseSizeInBytes(maxSizeStr);
         } catch (NumberFormatException e) {

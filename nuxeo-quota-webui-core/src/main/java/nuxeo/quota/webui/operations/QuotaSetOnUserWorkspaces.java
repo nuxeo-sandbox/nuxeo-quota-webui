@@ -18,10 +18,6 @@
  */
 package nuxeo.quota.webui.operations;
 
-import java.util.List;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.nuxeo.ecm.automation.core.annotations.Context;
 import org.nuxeo.ecm.automation.core.annotations.Operation;
 import org.nuxeo.ecm.automation.core.annotations.OperationMethod;
@@ -30,7 +26,6 @@ import org.nuxeo.ecm.core.api.Blob;
 import org.nuxeo.ecm.core.api.Blobs;
 import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.quota.QuotaStatsService;
-import org.nuxeo.ecm.quota.QuotaStatsUpdater;
 
 /**
  *
@@ -51,7 +46,7 @@ public class QuotaSetOnUserWorkspaces {
 
     @OperationMethod
     public Blob run() {
-        
+
         quotaStatsService.activateQuotaOnUserWorkspaces(maxSize, session);
         quotaStatsService.launchSetMaxQuotaOnUserWorkspaces(maxSize, session.getRootDocument(), session);
 

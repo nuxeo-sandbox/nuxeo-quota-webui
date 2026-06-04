@@ -1,0 +1,362 @@
+<!--
+(C) Copyright 2025 Hyland (http://hyland.com/) and contributors.
+Licensed under the Apache License, Version 2.0 (the 'License');
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an 'AS IS' BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+Contributors:
+  Thibaud Arguillere (thibarg)
+-->
+<link rel="import" href="nuxeo-quota-behavior.html">
+<dom-module id="nuxeo-quota-user-config">
+  <template>
+    <style include="iron-flex iron-flex-alignment nuxeo-styles">
+      .actionCard {
+        border-width: 1px;
+        border-style: solid;
+        border-color: lightgray;
+        padding: 16px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th, td {
+        text-align: left;
+        padding: 8px;
+        border-bottom: 1px solid #ddd;
+      }
+      .badge-xml {
+        background-color: #e0e0e0;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+      .badge-override {
+        background-color: #ffcc02;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+    </style>
+
+    <nuxeo-operation id="getConfigOp" op="Quota.User.GetConfiguration" auto response="{{config}}"></nuxeo-operation>
+    <nuxeo-operation id="setGroupOverrideOp" op="Quota.User.SetGroupOverride"></nuxeo-operation>
+    <nuxeo-operation id="setUserOverrideOp" op="Quota.User.SetUserOverride"></nuxeo-operation>
+    <nuxeo-operation id="clearGroupOverrideOp" op="Quota.User.ClearGroupOverride"></nuxeo-operation>
+    <nuxeo-operation id="clearUserOverrideOp" op="Quota.User.ClearUserOverride"></nuxeo-operation>
+    <nuxeo-operation id="getForUserOp" op="Quota.User.GetForUser"></nuxeo-operation>
+
+    <nuxeo-card heading="[[i18n('label.quota.user.config')]]" class="actionCard">
+      <paper-tabs selected="{{selectedTab}}" attr-for-selected="tab-name">
+        <paper-tab tab-name="groups">[[i18n('label.quota.user.perGroup')]]</paper-tab>
+        <paper-tab tab-name="users">[[i18n('label.quota.user.perUser')]]</paper-tab>
+      </paper-tabs>
+
+      <!-- Per-group tab -->
+      <iron-pages selected="{{selectedTab}}" attr-for-selected="tab-name">
+        <div tab-name="groups">
+          <div class="layout horizontal" style="margin-bottom: 12px;">
+            <nuxeo-user-suggestion search-type="GROUP_TYPE"
+                                   placeholder="add group..."
+                                   value="{{newGroupName}}"
+                                   style="flex: 1;"></nuxeo-user-suggestion>
+            <paper-button class="secondary" on-tap="_addGroupOverride" disabled$="[[!newGroupName]]">
+              [[i18n('action.quota.user.addGroup')]]
+            </paper-button>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Group</th>
+                <th>[[i18n('label.quota.user.maxUploadSize')]]</th>
+                <th>[[i18n('label.quota.user.maxTotalQuota')]]</th>
+                <th>Source</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template is="dom-repeat" items="{{_mergedGroupRows(config.xmlDefaults, config.groupOverrides)}}" as="row">
+                <tr>
+                  <td>[[row.group]]</td>
+                  <td>[[_formatBytes(row.maxUploadSize)]]</td>
+                  <td>[[_formatBytes(row.maxTotalQuota)]]</td>
+                  <td>
+                    <span class$="[[_badgeClass(row.source)]]">[[_sourceLabel(row.source)]]</span>
+                  </td>
+                  <td>
+                    <template is="dom-if" if="[[_isOverrideRow(row.source)]]">
+                      <paper-button class="secondary" on-tap="_editGroup" data-group$="[[row.group]]">
+                        [[i18n('action.quota.user.edit')]]
+                      </paper-button>
+                      <paper-button class="secondary" on-tap="_resetGroup" data-group$="[[row.group]]">
+                        [[i18n('action.quota.user.reset')]]
+                      </paper-button>
+                    </template>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Per-user tab -->
+        <div tab-name="users">
+          <div class="layout horizontal" style="margin-bottom: 12px;">
+            <nuxeo-user-suggestion placeholder="add user..."
+                                   value="{{newUserName}}"
+                                   style="flex: 1;"></nuxeo-user-suggestion>
+            <paper-button class="secondary" on-tap="_addUserOverride" disabled$="[[!newUserName]]">
+              [[i18n('action.quota.user.addUser')]]
+            </paper-button>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>[[i18n('label.quota.user.maxUploadSize')]]</th>
+                <th>[[i18n('label.quota.user.maxTotalQuota')]]</th>
+                <th>Current Usage</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template is="dom-repeat" items="{{config.userOverrides}}" as="override">
+                <tr>
+                  <td>[[override.username]]</td>
+                  <td>[[_formatBytes(override.maxUploadSize)]]</td>
+                  <td>[[_formatBytes(override.maxTotalQuota)]]</td>
+                  <td>[[_fetchUsage(override.username)]]</td>
+                  <td>
+                    <paper-button class="secondary" on-tap="_editUser" data-username$="[[override.username]]">
+                      [[i18n('action.quota.user.edit')]]
+                    </paper-button>
+                    <paper-button class="secondary" on-tap="_removeUser" data-username$="[[override.username]]">
+                      [[i18n('action.quota.user.remove')]]
+                    </paper-button>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </iron-pages>
+
+      <!-- Edit dialog -->
+      <paper-dialog id="editDialog" modal>
+        <h2>[[_editTitle]]</h2>
+        <nuxeo-quota-limit-setter
+            id="limitSetter"
+            target="{{_editTarget}}"
+            target-name="{{_editTargetName}}"
+            current-max-upload="{{_editMaxUpload}}"
+            current-max-total="{{_editMaxTotal}}"
+            read-only="false"
+            on-saved="_onEditSaved"></nuxeo-quota-limit-setter>
+        <div class="buttons">
+          <paper-button dialog-dismiss>Cancel</paper-button>
+        </div>
+      </paper-dialog>
+    </nuxeo-card>
+  </template>
+
+  <script>
+    Polymer({
+      is: 'nuxeo-quota-user-config',
+      behaviors: [Nuxeo.LayoutBehavior, Nuxeo.QuotaBehavior],
+      properties: {
+        config: Object,
+        selectedTab: {
+          type: String,
+          value: "groups"
+        },
+        newGroupName: String,
+        newUserName: String,
+        _editTarget: String,
+        _editTargetName: String,
+        _editMaxUpload: Number,
+        _editMaxTotal: Number,
+        _editTitle: String,
+        _usageCache: Object
+      },
+
+      _mergedGroupRows: function(xmlDefaults, groupOverrides) {
+        var map = {};
+        if (xmlDefaults) {
+          for (var i = 0; i < xmlDefaults.length; i++) {
+            var d = xmlDefaults[i];
+            map[d.group] = {
+              group: d.group,
+              maxUploadSize: d.maxUploadSize,
+              maxTotalQuota: d.maxTotalQuota,
+              source: "xml"
+            };
+          }
+        }
+        if (groupOverrides) {
+          for (var i = 0; i < groupOverrides.length; i++) {
+            var o = groupOverrides[i];
+            if (!map[o.group]) {
+              map[o.group] = { group: o.group, maxUploadSize: null, maxTotalQuota: null, source: "override" };
+            }
+            if (o.maxUploadSize !== undefined) {
+              map[o.group].maxUploadSize = o.maxUploadSize;
+            }
+            if (o.maxTotalQuota !== undefined) {
+              map[o.group].maxTotalQuota = o.maxTotalQuota;
+            }
+            map[o.group].source = "override";
+          }
+        }
+        var rows = [];
+        for (var key in map) {
+          rows.push(map[key]);
+        }
+        rows.sort(function(a, b) { return a.group.localeCompare(b.group); });
+        return rows;
+      },
+
+      _formatBytes: function(val) {
+        if (!val || val <= 0) {
+          return "-";
+        }
+        if (val === -1 || val === "-1") {
+          return this.i18n('label.quota.user.unlimited');
+        }
+        var vu = this.formatBytes(parseInt(val));
+        return vu.value + " " + vu.unit;
+      },
+
+      _badgeClass: function(source) {
+        return source === "override" ? "badge-override" : "badge-xml";
+      },
+
+      _sourceLabel: function(source) {
+        if (source === "override") {
+          return this.i18n('label.quota.user.source.override');
+        }
+        return this.i18n('label.quota.user.source.xml');
+      },
+
+      _isOverrideRow: function(source) {
+        return source === "override";
+      },
+
+      _addGroupOverride: function() {
+        this._editTarget = "group";
+        this._editTargetName = this.newGroupName;
+        this._editMaxUpload = null;
+        this._editMaxTotal = null;
+        this._editTitle = "Override for " + this.newGroupName;
+        this.$.editDialog.open();
+      },
+
+      _addUserOverride: function() {
+        this._editTarget = "user";
+        this._editTargetName = this.newUserName;
+        this._editMaxUpload = null;
+        this._editMaxTotal = null;
+        this._editTitle = "Override for " + this.newUserName;
+        this.$.editDialog.open();
+      },
+
+      _editGroup: function(evt) {
+        var group = evt.target.getAttribute("data-group");
+        var row = this._findGroupRow(group);
+        this._editTarget = "group";
+        this._editTargetName = group;
+        this._editMaxUpload = row ? row.maxUploadSize : null;
+        this._editMaxTotal = row ? row.maxTotalQuota : null;
+        this._editTitle = "Edit override for " + group;
+        this.$.editDialog.open();
+      },
+
+      _editUser: function(evt) {
+        var username = evt.target.getAttribute("data-username");
+        this._editTarget = "user";
+        this._editTargetName = username;
+        this._editMaxUpload = null;
+        this._editMaxTotal = null;
+        this._editTitle = "Edit override for " + username;
+        this.$.editDialog.open();
+      },
+
+      _findGroupRow: function(group) {
+        if (!this.config || !this.config.groupOverrides) {
+          return null;
+        }
+        for (var i = 0; i < this.config.groupOverrides.length; i++) {
+          if (this.config.groupOverrides[i].group === group) {
+            return this.config.groupOverrides[i];
+          }
+        }
+        return null;
+      },
+
+      _resetGroup: function(evt) {
+        var group = evt.target.getAttribute("data-group");
+        var op = this.$.clearGroupOverrideOp;
+        op.params = { group: group };
+        op.execute()
+          .then(function(result) {
+            this.$.getConfigOp.execute();
+            this.fire('notify', { message: "Group override cleared." });
+          }.bind(this))
+          .catch(function(err) {
+            alert("Error: " + err);
+          }.bind(this))
+      },
+
+      _removeUser: function(evt) {
+        var username = evt.target.getAttribute("data-username");
+        var op = this.$.clearUserOverrideOp;
+        op.params = { username: username };
+        op.execute()
+          .then(function(result) {
+            this.$.getConfigOp.execute();
+            this.fire('notify', { message: "User override cleared." });
+          }.bind(this))
+          .catch(function(err) {
+            alert("Error: " + err);
+          }.bind(this))
+      },
+
+      _onEditSaved: function() {
+        this.$.getConfigOp.execute();
+        this.$.editDialog.close();
+      },
+
+      _fetchUsage: function(username) {
+        if (!this._usageCache) {
+          this._usageCache = {};
+        }
+        if (this._usageCache[username]) {
+          var cached = this._usageCache[username];
+          return this.formatBytes(cached).value + " " + this.formatBytes(cached).unit;
+        }
+        var op = this.$.getForUserOp;
+        op.params = { username: username };
+        op.execute()
+          .then(function(result) {
+            this._usageCache[username] = result.usedBytes;
+            // Force re-render
+            this.notifyPath('config.userOverrides');
+          }.bind(this))
+          .catch(function(err) {
+            // Silently ignore
+          }.bind(this))
+        return "...";
+      }
+    });
+  </script>
+</dom-module>

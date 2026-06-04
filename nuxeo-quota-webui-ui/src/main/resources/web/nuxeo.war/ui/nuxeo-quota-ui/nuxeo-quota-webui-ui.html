@@ -17,6 +17,7 @@ Contributors:
 -->
 <link rel="import" href="nuxeo-quota-admin-center.html">
 <link rel="import" href="nuxeo-quota-for-document.html">
+<link rel="import" href="nuxeo-quota-user-usage.html">
 
 <!-- Contribution of element 'nuxeo-menu-item' for slot 'ADMINISTRATION_MENU' -->
 <nuxeo-slot-content name="nuxeo-quota-ui" slot="ADMINISTRATION_MENU" order="30">
@@ -46,5 +47,12 @@ Contributors:
 <nuxeo-slot-content name="quotaOnContainer" slot="DOCUMENT_VIEWS_PAGES">
   <template>
     <nuxeo-quota-for-document document="[[document]]" name="quotaoncontainer"></nuxeo-quota-for-document>
+  </template>
+</nuxeo-slot-content>
+
+<!-- Contribution of element 'nuxeo-quota-user-usage' for slot 'USER_MENU_ITEMS' -->
+<nuxeo-slot-content name="userQuotaUsage" slot="USER_MENU_ITEMS" order="50">
+  <template>
+    <nuxeo-quota-user-usage></nuxeo-quota-user-usage>
   </template>
 </nuxeo-slot-content>

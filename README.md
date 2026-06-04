@@ -46,6 +46,28 @@ When available for document, it displays "Quota / Statistics" tab with:
 
 ![Admin Center/Quota](readme-resources/quota-document.jpg)
 
+#### Per-user Upload Size and Per-user Quota
+
+Two features:
+- **Per-blob upload size cap**: each individual file (blob) is checked against the user's `maxUploadSize` limit.
+- **Per-user total quota**: the sum of all blob bytes owned by a user (keyed by `dc:creator`) is checked against `maxTotalQuota`.
+
+Limits are configured via the `userQuotas` extension point on `nuxeo.quota.webui.user.UserQuotaService`:
+
+```xml
+<userQuota group="*" maxUploadSize="-1" maxTotalQuota="-1"/>
+<userQuota group="members" maxUploadSize="50 MB" maxTotalQuota="2 GB"/>
+```
+
+Resolution order (per key): user override → group overrides (max-wins) → XML group defaults (max-wins) → XML `*` default → unlimited.
+Administrators bypass enforcement. `-1` means unlimited.
+
+The Admin Center ("Quotas / Statistics") has a new "User Quotas" card where administrators can override limits per group AND per user. Changes take effect immediately (no restart required).
+
+Initial computation can be launched from the Admin Center → "Compute Initial Statistics" → "Per-user quota".
+
+Counters are persisted in `KeyValueService` (production = MongoDB or SQL, cluster-shared).
+
 ## Known Issue(s)
 
 #### Labels Display Translation Keys

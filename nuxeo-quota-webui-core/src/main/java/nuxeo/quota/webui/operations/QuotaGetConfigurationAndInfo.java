@@ -22,14 +22,12 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import org.json.JSONObject;
-import org.nuxeo.common.utils.SizeUtils;
 import org.nuxeo.ecm.automation.core.annotations.Context;
 import org.nuxeo.ecm.automation.core.annotations.Operation;
 import org.nuxeo.ecm.automation.core.annotations.OperationMethod;
 import org.nuxeo.ecm.core.api.Blob;
 import org.nuxeo.ecm.core.api.Blobs;
 import org.nuxeo.ecm.core.api.CoreSession;
-import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.work.api.WorkManager;
 import org.nuxeo.ecm.core.work.api.WorkQueueMetrics;
 import org.nuxeo.ecm.quota.QuotaStatsService;
@@ -64,15 +62,15 @@ public class QuotaGetConfigurationAndInfo {
     @OperationMethod
     public Blob run() {
 
-        JSONObject jsonObj = new JSONObject();
+        var jsonObj = new JSONObject();
 
-        JSONObject maxSizeJson = QuotaConfigInfo.getMaxQuotaSize();
+        var maxSizeJson = QuotaConfigInfo.getMaxQuotaSize();
         jsonObj.put("maxQuotaSize", maxSizeJson.get("maxQuotaSize"));
         jsonObj.put("maxQuotaSizeStr", maxSizeJson.get("maxQuotaSizeStr"));
 
         // Is something running?
         boolean running = false;
-        WorkQueueMetrics metrics = workManager.getMetrics("quota");
+        var metrics = workManager.getMetrics("quota");
         if (metrics != null) {
             running = metrics.getRunning().longValue() + metrics.getScheduled().longValue() > 0;
         }
