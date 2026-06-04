@@ -1,7 +1,7 @@
 # nuxeo-quota-webui
 
 > [!CAUTION]
-> Version 2025.1.0-SNAPSHOT (for Nuxeo LTS 2025), in the `master` branch, is work in progress (new feature: Per-User quotas), still under developpment, and using GitHub as backup: **do not use it until it is released and available on the marketplace**.
+> Version 2025.1.0-SNAPSHOT (for Nuxeo LTS 2025), in the `master` branch, is work in progress (new feature: Per-User quotas), still under developpment, and using GitHub as backup: **do not use it until it is released and available on Nuxeo Marketplace**.
 > 
 > Only the released version 1.1 (for Nuxeo LTS 2023) has been tested by a Nuxeo Presales.
 
