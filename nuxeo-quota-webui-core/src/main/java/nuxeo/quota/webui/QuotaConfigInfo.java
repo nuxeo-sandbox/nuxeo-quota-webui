@@ -24,12 +24,6 @@ import org.json.JSONObject;
 import org.nuxeo.common.utils.SizeUtils;
 import org.nuxeo.runtime.api.Framework;
 
-/**
- * Misc configuration helpers for the quota plugin.
- * <p>
- * The max-quota size is parsed once and cached; the underlying framework property
- * ({@value #QUOTA_MAX_SIZE_PROP}) only changes across restarts.
- */
 public class QuotaConfigInfo {
 
     private static final Logger log = LogManager.getLogger(QuotaConfigInfo.class);
@@ -38,47 +32,25 @@ public class QuotaConfigInfo {
 
     public static final String QUOTA_MAX_SIZE_DEFAULT = "999 GB";
 
-    // Cached parsed values. volatile for safe publication; the values come from a
-    // framework property that only changes across restarts.
-    private static volatile Long cachedMaxQuotaSize;
-
-    private static volatile String cachedMaxQuotaSizeStr;
-
     public static JSONObject getMaxQuotaSize() {
-        var bytes = cachedMaxQuotaSize;
-        var str = cachedMaxQuotaSizeStr;
-        if (bytes == null || str == null) {
-            var maxSizeStr = Framework.getProperty(QUOTA_MAX_SIZE_PROP, QUOTA_MAX_SIZE_DEFAULT);
-            long configuredMaxQuotaSize;
-            try {
-                configuredMaxQuotaSize = SizeUtils.parseSizeInBytes(maxSizeStr);
-            } catch (NumberFormatException e) {
-                log.error("Invalid value for configuration property {}: {}; using default: {}",
-                        QUOTA_MAX_SIZE_PROP, maxSizeStr, QUOTA_MAX_SIZE_DEFAULT);
-                configuredMaxQuotaSize = SizeUtils.parseSizeInBytes(QUOTA_MAX_SIZE_DEFAULT);
-                maxSizeStr = QUOTA_MAX_SIZE_DEFAULT;
-            }
-            cachedMaxQuotaSize = configuredMaxQuotaSize;
-            cachedMaxQuotaSizeStr = maxSizeStr;
-            bytes = configuredMaxQuotaSize;
-            str = maxSizeStr;
+
+        JSONObject maxSizeJson = new JSONObject();
+
+        long configuredMaxQuotaSize;
+        // Max size and possible other config. parameters
+        String maxSizeStr = Framework.getProperty(QUOTA_MAX_SIZE_PROP, QUOTA_MAX_SIZE_DEFAULT);
+        try {
+            configuredMaxQuotaSize = SizeUtils.parseSizeInBytes(maxSizeStr);
+        } catch (NumberFormatException e) {
+            log.error("Invalid value for configuration property " + QUOTA_MAX_SIZE_PROP + ": " + maxSizeStr
+                    + "; using default: " + QUOTA_MAX_SIZE_DEFAULT);
+            configuredMaxQuotaSize = SizeUtils.parseSizeInBytes(QUOTA_MAX_SIZE_DEFAULT);
         }
 
-        var maxSizeJson = new JSONObject();
-        maxSizeJson.put("maxQuotaSize", bytes.longValue());
-        maxSizeJson.put("maxQuotaSizeStr", str);
-        return maxSizeJson;
-    }
+        maxSizeJson.put("maxQuotaSize", configuredMaxQuotaSize);
+        maxSizeJson.put("maxQuotaSizeStr", maxSizeStr);
 
-    /**
-     * Invalidates the cached max-quota-size value. Primarily for tests; the production
-     * value comes from a framework property and doesn't change at runtime.
-     *
-     * @since 2025.1
-     */
-    public static void invalidateCache() {
-        cachedMaxQuotaSize = null;
-        cachedMaxQuotaSizeStr = null;
+        return maxSizeJson;
     }
 
 }

@@ -18,6 +18,8 @@
  */
 package nuxeo.quota.webui.operations;
 
+import java.util.List;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.nuxeo.ecm.automation.core.annotations.Context;
@@ -26,6 +28,7 @@ import org.nuxeo.ecm.automation.core.annotations.OperationMethod;
 import org.nuxeo.ecm.core.api.Blob;
 import org.nuxeo.ecm.core.api.Blobs;
 import org.nuxeo.ecm.quota.QuotaStatsService;
+import org.nuxeo.ecm.quota.QuotaStatsUpdater;
 
 /**
  *
@@ -34,22 +37,22 @@ import org.nuxeo.ecm.quota.QuotaStatsService;
 public class QuotaGetStatsUpdaters {
 
     public static final String ID = "Quota.GetStatsUpdaters";
-
+    
     @Context
     QuotaStatsService quotaStatsService;
 
     @OperationMethod
     public Blob run() {
-        var updaters = quotaStatsService.getQuotaStatsUpdaters();
-        var jsonArr = new JSONArray();
-        for (var updater : updaters) {
-            var jsonObj = new JSONObject();
+        List<QuotaStatsUpdater> updaters = quotaStatsService.getQuotaStatsUpdaters();
+        JSONArray jsonArr = new JSONArray();
+        for(QuotaStatsUpdater updater : updaters) {
+            JSONObject jsonObj = new JSONObject();
             jsonObj.put("name", updater.getName());
             jsonObj.put("label", updater.getLabel());
             jsonObj.put("description",  updater.getDescriptionLabel());
             jsonArr.put(jsonObj);
         }
-
+        
         return Blobs.createJSONBlob(jsonArr.toString());
     }
 }

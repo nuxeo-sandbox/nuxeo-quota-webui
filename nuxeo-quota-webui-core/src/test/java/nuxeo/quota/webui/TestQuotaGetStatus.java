@@ -56,16 +56,16 @@ public class TestQuotaGetStatus {
 
     @Test
     public void shouldGetUpdatersStatuses() throws Exception {
-
-        var ctx = new OperationContext(session);
-        var result = (Blob) automationService.run(ctx, QuotaGetStatus.ID);
+        
+        OperationContext ctx = new OperationContext(session);
+        Blob result = (Blob) automationService.run(ctx, QuotaGetStatus.ID);
         assertNotNull(result);
-
-        var jsonArr = new JSONArray(result.getString());
+        
+        JSONArray jsonArr = new JSONArray(result.getString());
         assertNotNull(jsonArr);
         // In this unit test context, all should be "N/A" because no work is running
-        for (var i = 0; i < jsonArr.length(); i++) {
-            var obj = jsonArr.getJSONObject(i);
+        for(int i = 0; i < jsonArr.length(); i++) {
+            JSONObject obj = jsonArr.getJSONObject(i);
             assertEquals(QuotaGetStatus.NO_STATUS, obj.get("status"));
         }
     }

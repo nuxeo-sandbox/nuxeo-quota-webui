@@ -22,6 +22,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import org.json.JSONObject;
+import org.nuxeo.common.utils.SizeUtils;
 import org.nuxeo.ecm.automation.core.annotations.Context;
 import org.nuxeo.ecm.automation.core.annotations.Operation;
 import org.nuxeo.ecm.automation.core.annotations.OperationMethod;
@@ -29,7 +30,11 @@ import org.nuxeo.ecm.core.api.Blob;
 import org.nuxeo.ecm.core.api.Blobs;
 import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.core.api.DocumentModel;
+import org.nuxeo.ecm.core.work.api.WorkManager;
+import org.nuxeo.ecm.core.work.api.WorkQueueMetrics;
+import org.nuxeo.ecm.quota.QuotaStatsService;
 import org.nuxeo.ecm.quota.size.QuotaAware;
+import org.nuxeo.runtime.api.Framework;
 
 import nuxeo.quota.webui.QuotaConfigInfo;
 
@@ -51,29 +56,26 @@ public class QuotaGetOnContainer {
     @OperationMethod
     public Blob run(DocumentModel input) {
 
-        var jsonObj = new JSONObject();
+        JSONObject jsonObj = new JSONObject();
 
         if (input == null) {
             throw new IllegalArgumentException("An input document isrequired");
         }
 
         long maxSize = -1;
-        long totalSize = 0;
         // This is what original JSF action is doing (QuotaStatsAction#isQuotaSetOnCurrentDocument)
         // the quota info set on the userworkspaces root should be ignored
         if ("UserWorkspacesRoot".equals(input.getType())) {
             maxSize = -1;
         } else {
-            var qa = input.getAdapter(QuotaAware.class);
+            QuotaAware qa = input.getAdapter(QuotaAware.class);
             if (qa != null) {
                 maxSize = qa.getMaxQuota();
-                totalSize = qa.getTotalSize();
             }
         }
         jsonObj.put("quotaValue", maxSize);
-        jsonObj.put("totalSize", totalSize);
 
-        var maxSizeJson = QuotaConfigInfo.getMaxQuotaSize();
+        JSONObject maxSizeJson = QuotaConfigInfo.getMaxQuotaSize();
         jsonObj.put("maxQuotaSize", maxSizeJson.get("maxQuotaSize"));
         jsonObj.put("maxQuotaSizeStr", maxSizeJson.get("maxQuotaSizeStr"));
 

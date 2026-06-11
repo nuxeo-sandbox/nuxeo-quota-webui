@@ -3,9 +3,9 @@
 Licensed under the Apache License, Version 2.0 (the 'License');
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
+​
     http://www.apache.org/licenses/LICENSE-2.0
-
+​
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an 'AS IS' BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,23 +18,12 @@ Contributors:
 <!--
   <nuxeo-quota-limit-setter
       document="[[document]]"
-      target="group"
-      target-name="members"
-      current-max-upload="52428800"
-      current-max-total="2147483648"
-      read-only="[[someValue]]"
-      on-saved="[[onSaved]]"
-  ></nuxeo-quota-limit-setter>
-  target: "group" or "user" (renders two rows: max upload + max total),
-          or omit for document mode (single row, uses Quotas.SetMaxSize).
-  target-name: the group name or username (group/user mode only).
-  current-max-upload: current max upload size in bytes (override mode).
-  current-max-total: current max total quota in bytes (override mode if target set,
-                     or the document-mode current quota when target is empty).
-  read-only: disable editing.
-  on-saved: callback after successful save.
+      initial-quota-value="123456"  size in bytes
+      max-size="123456"  size in bytes
+      set-read-only="true"  or "[[someValue]]"
+      for-user-workspaces (or do not use this propertye)
+      ></nuxeo-quota-limit-setter>
 -->
-<link rel="import" href="nuxeo-quota-behavior.html">
 <dom-module id="nuxeo-quota-limit-setter">
   <template>
     <style include="iron-flex iron-flex-alignment nuxeo-styles">
@@ -43,179 +32,74 @@ Contributors:
         border-style: solid;
         border-color: lightgray;
       }
-      .quotaRow {
-        margin-bottom: 12px;
-      }
-      .rowLabel {
-        min-width: 140px;
-        font-weight: 500;
-        padding-top: 16px;
-      }
     </style>
 
-    <nuxeo-operation id="setQuotaOnDocOp" op="Quotas.SetMaxSize"></nuxeo-operation>
-    <nuxeo-operation id="setOnUserWorkspacesOp" op="Quota.SetOnUserWorkspaces"></nuxeo-operation>
-    <nuxeo-operation id="setGroupOverrideOp" op="Quota.User.SetGroupOverride"></nuxeo-operation>
-    <nuxeo-operation id="setUserOverrideOp" op="Quota.User.SetUserOverride"></nuxeo-operation>
-
-    <!-- ==================== Document mode: single row ==================== -->
-    <template is="dom-if" if="[[_isDocMode]]">
-      <div class="layout horizontal flex quotaRow">
+      <div class="layout horizontal flex">
         <div class="layout vertical" style="margin-left: 50px">
           <nuxeo-input id="quotaValueObject"
                        label="[[i18n('label.quota.maxSize')]]"
                        type="number"
                        value="{{quotaValue}}"
-                       disabled$="[[readOnly]]"></nuxeo-input>
+                       disabled></nuxeo-input>
+          <div>
+            (Max: [[maxSizeStr]])
+          </div>
         </div>
-
+      
         <nuxeo-select id="quotaUnitObject"
                       label="Unit"
                       selected="{{quotaValueUnit}}"
-                      options="[[_getUnits()]]"
+                      options="[[units]]"
                       style="margin-left: 25px"
-                      disabled$="[[readOnly]]">
+                      disabled>
         </nuxeo-select>
 
-        <div class="layout vertical" style="margin-left: 25px;">
-          <paper-checkbox checked="{{unlimited}}" disabled$="[[readOnly]]">
-            [[i18n('label.quota.user.unlimited')]]
-          </paper-checkbox>
+        <div>
+          <paper-button id="saveQuotaObject"
+                        disabled
+                        class="secondary"
+                        style="margin-left: 50px;"
+                        on-tap="_saveQuota">Save</nuxeo-button>
         </div>
       </div>
-    </template>
 
-    <!-- ==================== Override mode: two rows ==================== -->
-    <template is="dom-if" if="[[_isOverrideMode]]">
-      <div class="layout horizontal center quotaRow">
-        <div class="rowLabel">[[i18n('label.quota.user.maxUploadSize')]]</div>
-        <nuxeo-input id="uploadValueObject"
-                     type="number"
-                     value="{{uploadValue}}"
-                     disabled$="[[_isInputDisabled(readOnly, uploadUnlimited)]]"
-                     style="margin-left: 16px;"></nuxeo-input>
-        <nuxeo-select id="uploadUnitObject"
-                      selected="{{uploadUnit}}"
-                      options="[[_getUnits()]]"
-                      style="margin-left: 16px;"
-                      disabled$="[[_isInputDisabled(readOnly, uploadUnlimited)]]">
-        </nuxeo-select>
-        <paper-checkbox checked="{{uploadUnlimited}}"
-                        disabled$="[[readOnly]]"
-                        style="margin-left: 25px;">
-          [[i18n('label.quota.user.unlimited')]]
-        </paper-checkbox>
-      </div>
-
-      <div class="layout horizontal center quotaRow">
-        <div class="rowLabel">[[i18n('label.quota.user.maxTotalQuota')]]</div>
-        <nuxeo-input id="totalValueObject"
-                     type="number"
-                     value="{{totalValue}}"
-                     disabled$="[[_isInputDisabled(readOnly, totalUnlimited)]]"
-                     style="margin-left: 16px;"></nuxeo-input>
-        <nuxeo-select id="totalUnitObject"
-                      selected="{{totalUnit}}"
-                      options="[[_getUnits()]]"
-                      style="margin-left: 16px;"
-                      disabled$="[[_isInputDisabled(readOnly, totalUnlimited)]]">
-        </nuxeo-select>
-        <paper-checkbox checked="{{totalUnlimited}}"
-                        disabled$="[[readOnly]]"
-                        style="margin-left: 25px;">
-          [[i18n('label.quota.user.unlimited')]]
-        </paper-checkbox>
-      </div>
-    </template>
-
-    <div class="layout horizontal" style="margin-top: 12px;">
-      <paper-button id="saveQuotaObject"
-                    disabled$="[[_saveDisabled]]"
-                    class="primary"
-                    on-tap="_saveQuota">Save</paper-button>
-    </div>
 
   </template>
 
   <script>
     Polymer({
       is: 'nuxeo-quota-limit-setter',
-      behaviors: [Nuxeo.LayoutBehavior, Nuxeo.QuotaBehavior],
+      behaviors: [Nuxeo.LayoutBehavior],
       properties: {
+        // Properties set by the parent
         document: Object,
-        target: String,
-        targetName: String,
-        currentMaxUpload: {
+        initialQuotaValue: {
           type: Number,
-          observer: "_currentMaxUploadChanged"
+          observer: "_initialQuotaValueChanged"
         },
-        currentMaxTotal: {
+        maxSize: {
           type: Number,
-          observer: "_currentMaxTotalChanged"
+          value: 0,
+          observer: "_maxSizeChanged"
         },
-        readOnly: {
+        maxSizeStr: String,
+        forUserWorkspaces: Boolean,
+        
+        setReadOnly: {
           type: Boolean,
           value: true,
-          observer: "_readOnlyChanged"
+          observer: "_setReadOnlyChanged"
         },
-        onSaved: Function,
-        forUserWorkspaces: Boolean,
-
-        // Mode flags (computed from target)
-        _isDocMode: {
-          type: Boolean,
-          computed: "_computeIsDocMode(target)"
-        },
-        _isOverrideMode: {
-          type: Boolean,
-          computed: "_computeIsOverrideMode(target)"
-        },
-
-        // Document-mode state
+        
+        // "internal" properties
         quotaValue: {
           type: Number,
           observer: "_quotaValueChanged"
         },
         quotaValueUnit: {
           type: String,
-          value: "MB"
+          value:"MB"
         },
-        unlimited: {
-          type: Boolean,
-          value: false,
-          observer: "_unlimitedChanged"
-        },
-
-        // Override-mode state: upload row
-        uploadValue: {
-          type: Number,
-          observer: "_uploadValueChanged"
-        },
-        uploadUnit: {
-          type: String,
-          value: "MB"
-        },
-        uploadUnlimited: {
-          type: Boolean,
-          value: false,
-          observer: "_overrideStateChanged"
-        },
-
-        // Override-mode state: total row
-        totalValue: {
-          type: Number,
-          observer: "_totalValueChanged"
-        },
-        totalUnit: {
-          type: String,
-          value: "MB"
-        },
-        totalUnlimited: {
-          type: Boolean,
-          value: false,
-          observer: "_overrideStateChanged"
-        },
-
         units: {
           type: Array,
           value: [
@@ -224,223 +108,147 @@ Contributors:
             {id: "MB", label: "MB"},
             {id: "GB", label: "GB"},
           ]
-        },
-
-        _saveDisabled: {
-          type: Boolean,
-          value: true
         }
       },
 
       ready: function() {
-        this._updateState();
+        //alert("nuxeo-quota-limit-setter ready.\nforUserWorkspaces: " + this.forUserWorkspaces);
       },
 
-      _computeIsDocMode: function(target) {
-        return !target;
+      _initialQuotaValueChanged: function(newValue) {
+        if(newValue) {
+          let valueAndUnit = this._formatBytes(newValue);
+          this.quotaValue = valueAndUnit.value;
+          this.unit = valueAndUnit.unit;
+        }
       },
 
-      _computeIsOverrideMode: function(target) {
-        return target === "group" || target === "user";
+      _maxSizeChanged: function(newValue) {
+        let valueStr = "";
+
+        if(newValue) {
+          let valueAndUnit = this._formatBytes(newValue);
+          valueStr = valueAndUnit.value + " " + valueAndUnit.unit;
+        }
+
+        this.maxSizeStr = valueStr;
       },
 
-      _getUnits: function() {
-        return this.getUnitsForDropDown();
+      _setReadOnlyChanged: function(newValue) {
+        this._enableDisableObjects();
       },
 
-      _isInputDisabled: function(readOnly, unlimitedFlag) {
-        return readOnly || unlimitedFlag;
-      },
-
-      _currentMaxUploadChanged: function(newValue) {
-        // Override mode only — doc mode does not use currentMaxUpload
-        if (newValue === -1) {
-          this.uploadUnlimited = true;
-          this.uploadValue = null;
-        } else if (newValue && newValue > 0) {
-          var vu = this.formatBytes(newValue);
-          this.uploadValue = vu.value;
-          this.uploadUnit = vu.unit;
-          this.uploadUnlimited = false;
+      _enableDisableObjects: function() {
+        if(this.setReadOnly) {
+          this.$.quotaValueObject.disabled = true;
+          this.$.quotaUnitObject.disabled = true;
+          this.$.saveQuotaObject.disabled = true;
+          return;
         } else {
-          this.uploadValue = null;
-          this.uploadUnlimited = false;
+          this.$.quotaValueObject.disabled = false;
+          this.$.quotaUnitObject.disabled = false;
         }
-        this._updateState();
-      },
+        
+        this.$.saveQuotaObject.disabled = this.quotaValue <= 0;
 
-      _currentMaxTotalChanged: function(newValue) {
-        if (this._isOverrideMode) {
-          if (newValue === -1) {
-            this.totalUnlimited = true;
-            this.totalValue = null;
-          } else if (newValue && newValue > 0) {
-            var vu = this.formatBytes(newValue);
-            this.totalValue = vu.value;
-            this.totalUnit = vu.unit;
-            this.totalUnlimited = false;
-          } else {
-            this.totalValue = null;
-            this.totalUnlimited = false;
-          }
-        } else {
-          // Doc mode: legacy single-row state
-          if (newValue && newValue > 0) {
-            var vud = this.formatBytes(newValue);
-            this.quotaValue = vud.value;
-            this.quotaValueUnit = vud.unit;
-          } else if (newValue === -1) {
-            this.unlimited = true;
-          }
-        }
-        this._updateState();
-      },
-
-      _readOnlyChanged: function(newValue) {
-        this._updateState();
-      },
-
-      _unlimitedChanged: function() {
-        this._updateState();
-      },
-
-      _uploadValueChanged: function(value) {
-        if (!this.readOnly && value > 0) {
-          this.uploadUnlimited = false;
-        }
-        this._updateState();
-      },
-
-      _totalValueChanged: function(value) {
-        if (!this.readOnly && value > 0) {
-          this.totalUnlimited = false;
-        }
-        this._updateState();
-      },
-
-      _overrideStateChanged: function() {
-        this._updateState();
       },
 
       _quotaValueChanged: function(value) {
-        if (!this.readOnly) {
-          this.unlimited = false;
-        }
-        this._updateState();
-      },
+       this._enableDisableObjects();
 
-      _updateState: function() {
-        this._saveDisabled = this._computeSaveDisabled();
-      },
-
-      _computeSaveDisabled: function() {
-        if (this.readOnly) {
-          return true;
+        let valueBytes = this._getValueBytes(value);
+        if(valueBytes > this.maxSize) {
+          alert("Value can't be greater than " + this.maxSizeStr);
+          let valueAndUnit = this._formatBytes(this.maxSize);
+          this.quotaValue = valueAndUnit.value;
+          this.unit = valueAndUnit.unit;
         }
-        if (this._isOverrideMode) {
-          // At least one row must have a usable value
-          var uploadOk = this.uploadUnlimited || (this.uploadValue && this.uploadValue > 0);
-          var totalOk = this.totalUnlimited || (this.totalValue && this.totalValue > 0);
-          return !uploadOk && !totalOk;
-        }
-        // Doc mode
-        if (this.unlimited) {
-          return false;
-        }
-        return !this.quotaValue || this.quotaValue <= 0;
-      },
-
-      _resolveBytes: function(value, unit, isUnlimited) {
-        if (isUnlimited) {
-          return -1;
-        }
-        if (value && value > 0) {
-          return this.getValueBytes(value, unit);
-        }
-        return null;
       },
 
       _saveQuota: function() {
-        if (this._isOverrideMode) {
-          this._saveOverride();
-          return;
+        alert("Saving quota. forUserWorkspaces => " + this.forUserWorkspaces);
+        /*
+        let maxSizeBytes = null;
+        let msg;
+        if(this.activateQuota == "no") {
+          if(confirm("Disable quota on User Workspaces ?")) {
+            maxSizeBytes = -1;
+            msg = "Quota disbaled for User Workspaces.";
+          }
+        } else {
+          if(this.quotaValue <= 0 || !this.quotaValueUnit) {
+            alert("Invalid value: <" + this.quotaValue + " " + this.quotaValueUnit + ">");
+          } else {
+            if(confirm("Set max quota for User Workspaces to " + this.quotaValue + " " + this.quotaValueUnit + "?")) {
+              maxSizeBytes = this._getValueBytes();
+              msg = "Max quota on User Workspaces activated, work in progress.";
+            }
+          }
         }
-        // Document mode
-        var maxSizeBytes;
-        if (this.unlimited) {
-          maxSizeBytes = -1;
-        } else if (this.quotaValue > 0) {
-          maxSizeBytes = this.getValueBytes(this.quotaValue, this.quotaValueUnit);
-        }
-        if (maxSizeBytes === undefined) {
-          return;
-        }
-        if (this.document && !this.forUserWorkspaces) {
-          var op = this.$.setQuotaOnDocOp;
-          op.input = this.document;
-          op.params = { targetSize: maxSizeBytes };
-          op.execute()
-            .then(function(result) {
-              this.fire('notify', { message: "Quota updated." });
-              if (this.onSaved) {
-                this.onSaved();
-              }
-            }.bind(this))
-            .catch(function(err) {
-              this.fire('notify', { message: 'Failed to update quota: ' + err, type: 'error' });
-            }.bind(this));
-        } else if (this.forUserWorkspaces) {
-          var opws = this.$.setOnUserWorkspacesOp;
-          opws.params = { maxSize: maxSizeBytes };
-          opws.execute()
-            .then(function(result) {
-              this.fire('notify', { message: "User Workspaces quota updated." });
-              if (this.onSaved) {
-                this.onSaved();
-              }
-            }.bind(this))
-            .catch(function(err) {
-              this.fire('notify', { message: 'Failed to update User Workspaces quota: ' + err, type: 'error' });
-            }.bind(this));
-        }
+
+        if(maxSizeBytes) {
+          let op = this.$.setOnUserWorkspacesOp;
+              op.params = {maxSize: maxSizeBytes };
+              op.execute()
+                .then(function(result) {
+                  this.fire('notify', { message: msg });
+                }.bind(this))
+                .catch(function(err) {
+                  alert("An error occured: " + err);
+                })
+        }*/
       },
 
-      _saveOverride: function() {
-        if (!this.targetName) {
-          this.fire('notify', { message: 'No ' + this.target + ' specified', type: 'error' });
-          return;
+      _formatBytes: function(bytes) {
+        if(!bytes || bytes <= 0) {
+          return {
+            value: 0,
+            unit: "MB"
+          };
         }
-        var uploadBytes = this._resolveBytes(this.uploadValue, this.uploadUnit, this.uploadUnlimited);
-        var totalBytes = this._resolveBytes(this.totalValue, this.totalUnit, this.totalUnlimited);
-        if (uploadBytes === null && totalBytes === null) {
-          this.fire('notify', { message: 'Enter at least one value (Max Upload Size or Max Total Quota).', type: 'error' });
-          return;
-        }
-        var params = {};
-        if (this.target === "group") {
-          params.group = this.targetName;
+
+        const marker = 1024;
+        const decimal = 2;
+        const kiloBytes = marker;
+        const megaBytes = marker * marker;
+        const gigaBytes = marker * marker * marker;
+
+        let value, unit;
+
+        if (bytes < kiloBytes) {
+          value = bytes;
+          unit = "B"
+        } else if (bytes < megaBytes) {
+          value = (bytes / kiloBytes).toFixed(decimal);
+          unit = "KB"
+        } else if (bytes < gigaBytes) {
+          value = (bytes / megaBytes).toFixed(decimal);
+          unit = "MB"
         } else {
-          params.username = this.targetName;
+          value = (bytes / gigaBytes).toFixed(decimal);
+          unit = "GB"
         }
-        if (uploadBytes !== null) {
-          params.maxUploadSize = "" + uploadBytes;
+
+        return {
+          value: value,
+          unit: unit
+        };
+      },
+
+      _getValueBytes: function(value) {
+        if(!value) {
+          value = this.quotaValue;
         }
-        if (totalBytes !== null) {
-          params.maxTotalQuota = "" + totalBytes;
+        switch(this.quotaValueUnit) {
+          case "B":
+            return value;
+          case "KB":
+            return value * 1024;
+          case "MB":
+            return value * 1024 * 1024;
+          case "GB":
+            return value * 1024 * 1024 * 1024;
         }
-        var op = this.target === "group" ? this.$.setGroupOverrideOp : this.$.setUserOverrideOp;
-        op.params = params;
-        op.execute()
-          .then(function(result) {
-            var label = this.target === "group" ? "Group override saved." : "User override saved.";
-            this.fire('notify', { message: label });
-            if (this.onSaved) {
-              this.onSaved();
-            }
-          }.bind(this))
-          .catch(function(err) {
-            this.fire('notify', { message: 'Failed to save override: ' + err, type: 'error' });
-          }.bind(this));
       }
     });
   </script>

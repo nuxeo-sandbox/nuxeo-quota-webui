@@ -15,7 +15,6 @@ limitations under the License.
 Contributors:
   Thibaud Arguillere (thibarg)
 -->
-<link rel="import" href="nuxeo-quota-behavior.html">
 <dom-module id="nuxeo-quota-stats">
   <template>
     <style include="iron-flex iron-flex-alignment nuxeo-styles">
@@ -28,37 +27,25 @@ Contributors:
         border-style: solid;
         border-color: lightgray;
       }
-
-      .info {
-        font-size: smaller;
-      }
     </style>
 
     <nuxeo-operation id="quotasStatsOp" op="Quotas.GetStatistics" response="{{stats}}"></nuxeo-operation>
 
     <nuxeo-card heading="Quota for '[[_getDocTitle(document)]]'" class="actionCard">
       <template is="dom-if" if="[[_hasDocument(document)]]">
-        <template is="dom-if" if="[[noStats]]">
-          <div class="info">[[i18n('label.quota.error.display')]]</div>
-        </template>
-        <template is="dom-if" if="[[!noStats]]">
-          <chart-pie values="[[_quotasChartData(analytics, 'values')]]"
-                      labels="[[_quotasChartData(analytics, 'labels')]]"
-                      options="[[_quotasChartOptions()]]">
-          </chart-pie>
-        </template>
+        <chart-pie values="[[_quotasChartData(analytics, 'values')]]"
+                    labels="[[_quotasChartData(analytics, 'labels')]]"
+                    options="[[_quotasChartOptions()]]">
+        </chart-pie>
       </template>
     </nuxeo-card>
 
   </template>
 
   <script>
-    // See org.nuxeo.ecm.quota.size.QuotaAwareDocument.DOCUMENTS_SIZE_STATISTICS_FACET
-    const STATS_FACET = 'DocumentsSizeStatistics';
-
     Polymer({
       is: 'nuxeo-quota-stats',
-      behaviors: [Nuxeo.LayoutBehavior, Nuxeo.QuotaBehavior],
+      behaviors: [Nuxeo.LayoutBehavior],
       properties: {
         document: {
           type: Object,
@@ -67,10 +54,6 @@ Contributors:
         analytics: {
           type: Object,
           value: null
-        },
-        noStats: {
-          type: Boolean,
-          value: false
         },
         defaultChartOptions: {
           type: Object,
@@ -130,46 +113,35 @@ Contributors:
       },
 
       _documentChanged: function(doc) {
-        if(!doc) {
-          return;
-        }
-        // Quotas.GetStatistics throws "Quota not activated on doc" when the platform's
-        // DocumentsSizeStatistics facet is missing (i.e. before the documentsSizeUpdater
-        // initial computation has ever run on this document tree). Gate the call to
-        // avoid a 500 and show a friendly hint instead.
-        if(!this.hasFacet(doc, STATS_FACET)) {
-          this.analytics = null;
-          this.noStats = true;
-          return;
-        }
-        this.noStats = false;
-        let op = this.$.quotasStatsOp;
-        op.params = {
-          documentRef: doc.uid
-        };
-        op.execute()
-          .then(function(result) {
-            /* See GetQuotaStatisticsOperation java code. We recevie sometuing like:
-[
- {
-   "label": "Live Documents Size:2.16 MBytes",
-   "data": 2261560
- },
- {
-   "label": "Trash Size:0 KBytes",
-   "data": 0
- },
- {
-   "label": "Archived Versions Size:0 KBytes",
-   "data": 0
- }
+        if(doc) {
+          let op = this.$.quotasStatsOp;
+          op.params = {
+            documentRef: doc.uid
+          };
+          op.execute()
+            .then(function(result) {
+              /* See GetQuotaStatisticsOperation java code. We recevie sometuing like:
+ [
+  {
+    "label": "Live Documents Size:2.16 MBytes",
+    "data": 2261560
+  },
+  {
+    "label": "Trash Size:0 KBytes",
+    "data": 0
+  },
+  {
+    "label": "Archived Versions Size:0 KBytes",
+    "data": 0
+  }
 ]
 */
-            this.analytics = result;
-          }.bind(this))
-          .catch(function(err) {
-            this.fire('notify', { message: 'Failed to load quota statistics: ' + err, type: 'error' });
-          }.bind(this))
+              this.analytics = result;
+            }.bind(this))
+            .catch(function(err) {
+              alert("An error occured: " + err);
+            }.bind(this))
+        }
       },
 
       _quotasChartData: function(analytics, what) {
@@ -179,20 +151,8 @@ Contributors:
         }
 
         if(what === "labels") {
-          // Re-format labels from raw bytes (analytics[i].data) instead of trusting the
-          // platform's pre-formatted label string. In LTS 2025 the platform's
-          // GetQuotaStatisticsOperation produces malformed unit names like "GiBiBytes" /
-          // "KiBiBytes" (SizeUtils changes). Build "<name> (<value> <unit>)" ourselves.
-          // For zero bytes show just "0" (no unit) — formatBytes() returns an undefined
-          // value field when bytes <= 0.
-          return analytics.map(function(obj) {
-            var name = obj.label.split(" Size:")[0];
-            if(!obj.data || obj.data <= 0) {
-              return name + " (0)";
-            }
-            var vu = this.formatBytes(obj.data);
-            return name + " (" + vu.value + " " + vu.unit + ")";
-          }.bind(this));
+          // Just a quick format for fun
+          return analytics.map((obj) => obj.label.replace(" Size:", " (") + ")");
         }
 
         if(what === "values") {

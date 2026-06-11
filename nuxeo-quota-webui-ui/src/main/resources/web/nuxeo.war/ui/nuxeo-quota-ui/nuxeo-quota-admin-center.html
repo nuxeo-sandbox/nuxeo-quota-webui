@@ -17,7 +17,6 @@ Contributors:
 -->
 <link rel="import" href="nuxeo-quota-stats.html">
 <link rel="import" href="nuxeo-quota-admin-userws.html">
-<link rel="import" href="nuxeo-quota-user-config.html">
 <dom-module id="nuxeo-quota-admin-center">
   <template>
     <style include="iron-flex iron-flex-alignment nuxeo-styles">
@@ -59,9 +58,6 @@ Contributors:
 
       <!-- User Workspaces -->
       <nuxeo-quota-admin-userws></nuxeo-quota-admin-userws>
-
-      <!-- User Quota Config -->
-      <nuxeo-quota-user-config></nuxeo-quota-user-config>
 
       <!-- Start stats -->
       <nuxeo-card heading="[[i18n('adm.quota.compute.initial.statistics')]]" class="actionCard">
@@ -153,6 +149,15 @@ Contributors:
 
       _computeInitialStatistics:function(evt) {
 
+        let zeop = this.$.quotasStatsOp;
+
+
+
+
+
+
+
+
         let updater = this.updaters[evt.target.idx];
         if(confirm("Launch the asynchronous '" + updater.label + "' work?")) {
           let op = this.$.launchInitialComputationOp;
@@ -166,7 +171,7 @@ Contributors:
               this.$.getStatusOp.execute();
             }.bind(this))
             .catch(function(err) {
-              this.fire('notify', { message: 'Failed to launch initial computation: ' + err, type: 'error' });
+              alert("An error occured: " + err);
             }.bind(this))
         }
       }
