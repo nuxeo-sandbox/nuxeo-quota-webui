@@ -22,7 +22,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import org.json.JSONObject;
-import org.nuxeo.common.utils.SizeUtils;
 import org.nuxeo.ecm.automation.core.annotations.Context;
 import org.nuxeo.ecm.automation.core.annotations.Operation;
 import org.nuxeo.ecm.automation.core.annotations.OperationMethod;
@@ -30,11 +29,7 @@ import org.nuxeo.ecm.core.api.Blob;
 import org.nuxeo.ecm.core.api.Blobs;
 import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.core.api.DocumentModel;
-import org.nuxeo.ecm.core.work.api.WorkManager;
-import org.nuxeo.ecm.core.work.api.WorkQueueMetrics;
-import org.nuxeo.ecm.quota.QuotaStatsService;
 import org.nuxeo.ecm.quota.size.QuotaAware;
-import org.nuxeo.runtime.api.Framework;
 
 import nuxeo.quota.webui.QuotaConfigInfo;
 
@@ -59,7 +54,7 @@ public class QuotaGetOnContainer {
         JSONObject jsonObj = new JSONObject();
 
         if (input == null) {
-            throw new IllegalArgumentException("An input document isrequired");
+            throw new IllegalArgumentException("An input document is required");
         }
 
         long maxSize = -1;
