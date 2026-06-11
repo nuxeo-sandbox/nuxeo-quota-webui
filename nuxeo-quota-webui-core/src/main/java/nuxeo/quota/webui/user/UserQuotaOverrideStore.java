@@ -93,6 +93,32 @@ public class UserQuotaOverrideStore {
         return values;
     }
 
+    /**
+     * Batch get group overrides paired with the contributing group name. Only entries with
+     * a non-null value are returned. The order matches the input {@code groups} list.
+     *
+     * @since 2025.1
+     */
+    public List<Map.Entry<String, Long>> collectGroupOverridesWithGroup(String repo, List<String> groups, String key) {
+        var store = groupStore();
+        var keyToGroup = new HashMap<String, String>();
+        var keys = new ArrayList<String>();
+        for (var g : groups) {
+            var k = buildKey(repo, g, key);
+            keyToGroup.put(k, g);
+            keys.add(k);
+        }
+        var batch = store.getLongs(keys);
+        var results = new ArrayList<Map.Entry<String, Long>>();
+        for (var g : groups) {
+            var v = batch.get(buildKey(repo, g, key));
+            if (v != null) {
+                results.add(Map.entry(g, v));
+            }
+        }
+        return results;
+    }
+
     // --- User overrides ---
 
     public Optional<Long> getUserOverride(String repo, String userId, String key) {

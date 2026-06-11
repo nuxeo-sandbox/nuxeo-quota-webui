@@ -18,9 +18,9 @@
  */
 package nuxeo.quota.webui.operations.user;
 
-import static jakarta.servlet.http.HttpServletResponse.SC_FORBIDDEN;
+import static nuxeo.quota.webui.QuotaUtils.buildUserQuotaJson;
+import static nuxeo.quota.webui.QuotaUtils.ensureAdmin;
 
-import org.json.JSONObject;
 import org.nuxeo.ecm.automation.core.annotations.Context;
 import org.nuxeo.ecm.automation.core.annotations.Operation;
 import org.nuxeo.ecm.automation.core.annotations.OperationMethod;
@@ -28,11 +28,9 @@ import org.nuxeo.ecm.automation.core.annotations.Param;
 import org.nuxeo.ecm.core.api.Blob;
 import org.nuxeo.ecm.core.api.Blobs;
 import org.nuxeo.ecm.core.api.CoreSession;
-import org.nuxeo.ecm.core.api.NuxeoException;
 import org.nuxeo.runtime.api.Framework;
 
 import nuxeo.quota.webui.user.UserQuotaCounter;
-import nuxeo.quota.webui.user.UserQuotaLimits;
 import nuxeo.quota.webui.user.UserQuotaService;
 
 /**
@@ -64,20 +62,6 @@ public class QuotaUserGetForUser {
         var counter = new UserQuotaCounter();
         var usedBytes = counter.get(repo, username);
 
-        var json = new JSONObject();
-        json.put("userId", username);
-        json.put("usedBytes", usedBytes);
-        json.put("maxTotalQuota", limits.maxTotalQuota());
-        json.put("maxUploadSize", limits.maxUploadSize());
-        json.put("source", limits.source());
-        json.put("matchedGroup", limits.matchedGroup());
-
-        return Blobs.createJSONBlob(json.toString());
-    }
-
-    static void ensureAdmin(CoreSession session) {
-        if (!session.getPrincipal().isAdministrator()) {
-            throw new NuxeoException("Administrator required", SC_FORBIDDEN);
-        }
+        return Blobs.createJSONBlob(buildUserQuotaJson(username, usedBytes, limits).toString());
     }
 }

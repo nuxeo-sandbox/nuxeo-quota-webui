@@ -18,6 +18,8 @@
  */
 package nuxeo.quota.webui.operations;
 
+import static nuxeo.quota.webui.QuotaUtils.ensureAdmin;
+
 import org.nuxeo.ecm.automation.core.annotations.Context;
 import org.nuxeo.ecm.automation.core.annotations.Operation;
 import org.nuxeo.ecm.automation.core.annotations.OperationMethod;
@@ -44,6 +46,7 @@ public class QuotaLaunchInitialComputation {
 
     @OperationMethod
     public void run() {
+        ensureAdmin(session);
 
         quotaStatsService.launchInitialStatisticsComputation(updaterName, session.getRepositoryName(), null);
 

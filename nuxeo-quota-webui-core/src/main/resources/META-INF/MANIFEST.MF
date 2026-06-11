@@ -11,5 +11,6 @@ Nuxeo-Component: OSGI-INF/operations-contrib.xml,
  OSGI-INF/quotastats-user-contrib.xml,
  OSGI-INF/userquota-defaults-contrib.xml,
  OSGI-INF/cache-contrib.xml,
- OSGI-INF/bulk-action-framework-contrib.xml
+ OSGI-INF/bulk-action-framework-contrib.xml,
+ OSGI-INF/automation-bindings-contrib.xml
 

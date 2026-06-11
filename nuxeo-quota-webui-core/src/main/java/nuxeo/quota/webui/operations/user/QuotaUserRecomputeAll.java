@@ -18,11 +18,10 @@
  */
 package nuxeo.quota.webui.operations.user;
 
-import static jakarta.servlet.http.HttpServletResponse.SC_FORBIDDEN;
+import static nuxeo.quota.webui.QuotaUtils.ensureAdmin;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 
 import org.json.JSONObject;
 import org.nuxeo.ecm.automation.core.annotations.Context;
@@ -31,7 +30,6 @@ import org.nuxeo.ecm.automation.core.annotations.OperationMethod;
 import org.nuxeo.ecm.core.api.Blob;
 import org.nuxeo.ecm.core.api.Blobs;
 import org.nuxeo.ecm.core.api.CoreSession;
-import org.nuxeo.ecm.core.api.NuxeoException;
 import org.nuxeo.ecm.core.bulk.BulkService;
 import org.nuxeo.ecm.core.bulk.message.BulkCommand;
 import org.nuxeo.runtime.api.Framework;
@@ -57,9 +55,7 @@ public class QuotaUserRecomputeAll {
 
     @OperationMethod
     public Blob run() throws IOException {
-        if (!session.getPrincipal().isAdministrator()) {
-            throw new NuxeoException("Administrator required", SC_FORBIDDEN);
-        }
+        ensureAdmin(session);
 
         var repo = session.getRepositoryName();
 

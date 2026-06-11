@@ -55,4 +55,14 @@ public interface UserQuotaService {
 
     /** @since 2025.1 */
     void invalidateCacheForUser(String userId, String repositoryName);
+
+    /**
+     * Returns the shared {@link UserQuotaOverrideStore} instance used by the service.
+     * <p>
+     * The store is stateless (it only holds references to the underlying KV stores) but
+     * exposing it through the service avoids allocating a fresh wrapper in every operation.
+     *
+     * @since 2025.1
+     */
+    UserQuotaOverrideStore getOverrideStore();
 }

@@ -44,51 +44,79 @@ TODO: As several parts are shared with nuxeo-quota-for-document, something shoul
         border-style: solid;
         border-color: lightgray;
       }
+
+      .usage-info {
+        font-size: 14px;
+        margin-bottom: 16px;
+        padding: 8px 12px;
+        background-color: var(--nuxeo-box, #f5f5f5);
+        border-radius: 4px;
+      }
+
+      .usage-info .percentage {
+        font-weight: 500;
+        margin-left: 8px;
+      }
     </style>
 
     <nuxeo-operation id="getQuotaOp" op="Quota.GetContainerQuota" response="{{originalQuota}}"></nuxeo-operation>
     <nuxeo-operation id="setQuotaOp" op="Quotas.SetMaxSize"></nuxeo-operation>
+    <nuxeo-operation id="canManageOp" op="Quota.CanManageQuotas"></nuxeo-operation>
 
     <nuxeo-card heading="[[i18n('adm.quota.statistics')]]">
       <nuxeo-quota-stats document="[[document]]"></nuxeo-quota-stats>
     </nuxeo-card>
 
     <nuxeo-card heading="[[i18n('action.activate.quota')]]" class="actionCard">
-      <div class="layout horizontal flex">
-        <div class="layout vertical" style="margin-left: 50px">
-          <nuxeo-input id="quotaValueObj"
-                      label="[[i18n('label.quota.maxSize')]]"
-                      type="number"
-                      value="{{quotaValue}}"></nuxeo-input>
-          <template is="dom-if" if="[[!_hasOriginalQuota(originalQuota)]]">
-            (No quota set on this container)
-          </template>
+      <!-- Usage info: visible to all users -->
+      <div class="usage-info">
+        <template is="dom-if" if="[[_hasQuotaLimit(originalQuota)]]">
+          [[_formatUsageText(originalQuota)]]
+          <span class="percentage">([[_formatPercentage(originalQuota)]])</span>
+        </template>
+        <template is="dom-if" if="[[!_hasQuotaLimit(originalQuota)]]">
+          [[_formatUsedOnly(originalQuota)]]
+        </template>
+      </div>
+
+      <!-- Edit controls: only visible to admins or users with Everything permission -->
+      <template is="dom-if" if="[[_canEdit]]">
+        <div class="layout horizontal flex">
+          <div class="layout vertical" style="margin-left: 50px">
+            <nuxeo-input id="quotaValueObj"
+                        label="[[i18n('label.quota.maxSize')]]"
+                        type="number"
+                        value="{{quotaValue}}"></nuxeo-input>
+            <template is="dom-if" if="[[!_hasOriginalQuota(originalQuota)]]">
+              (No quota set on this container)
+            </template>
+            <div>
+              Max: [[originalQuota.maxQuotaSizeStr]]
+            </div>
+          </div>
+        
+          <nuxeo-select id="quotaUnitSelect"
+                        label="Unit"
+                        selected="{{quotaUnit}}"
+                        options="[[_getUnits()]]"
+                        style="margin-left: 25px">
+          </nuxeo-select>
+
           <div>
-            Max: [[originalQuota.maxQuotaSizeStr]]
+            <paper-button id="saveQuota"
+                          disabled
+                          class="secondary"
+                          style="margin-left: 50px;"
+                          on-tap="_saveQuota">Save</paper-button>
+            
+            <paper-button id="disableQuota"
+                          disabled
+                          class="secondary"
+                          style="margin-left: 50px;"
+                          on-tap="_disableQuota">Disable Quota</paper-button>
           </div>
         </div>
-      
-        <nuxeo-select id="quotaValueObj"
-                      label="Unit"
-                      selected="{{quotaUnit}}"
-                      options="[[_getUnits()]]"
-                      style="margin-left: 25px">
-        </nuxeo-select>
-
-        <div>
-          <paper-button id="saveQuota"
-                        disabled
-                        class="secondary"
-                        style="margin-left: 50px;"
-                        on-tap="_saveQuota">Save</paper-button>
-          
-          <paper-button id="disableQuota"
-                        disabled
-                        class="secondary"
-                        style="margin-left: 50px;"
-                        on-tap="_disableQuota">Disable Quota</paper-button>
-        </div>
-      </div>
+      </template>
     </nuxeo-card>
 
   </template>
@@ -101,6 +129,17 @@ TODO: As several parts are shared with nuxeo-quota-for-document, something shoul
         document: {
           type: Object,
           observer: "_documentChanged"
+        },
+        user: {
+          type: Object
+        },
+        _canManage: {
+          type: Boolean,
+          value: false
+        },
+        _canEdit: {
+          type: Boolean,
+          computed: "_computeCanEdit(user, document, _canManage)"
         },
         originalQuota: {
           type: Object,
@@ -130,6 +169,18 @@ TODO: As several parts are shared with nuxeo-quota-for-document, something shoul
         }
       },
 
+      attached: function() {
+        // Resolve whether the current user can manage quotas. The server-side
+        // operations re-validate this; the result here only drives UI visibility.
+        this.$.canManageOp.execute()
+          .then(function(blob) {
+            this._canManage = !!(blob && blob.canManage);
+          }.bind(this))
+          .catch(function() {
+            this._canManage = false;
+          }.bind(this));
+      },
+
       _hasOriginalQuota: function(quotaObj) {
         if(!quotaObj || !quotaObj.quotaValue || quotaObj.quotaValue <= 0) {
           return false;
@@ -153,10 +204,13 @@ TODO: As several parts are shared with nuxeo-quota-for-document, something shoul
           }
         }
 
-        if(result && result.quotaValue > 0) {
-          this.$.disableQuota.disabled = false;
-        } else {
-          this.$.disableQuota.disabled = true;
+        // Only update button states if _canEdit and buttons exist
+        if(this._canEdit && this.$.disableQuota) {
+          if(result && result.quotaValue > 0) {
+            this.$.disableQuota.disabled = false;
+          } else {
+            this.$.disableQuota.disabled = true;
+          }
         }
       },
 
@@ -227,6 +281,58 @@ TODO: As several parts are shared with nuxeo-quota-for-document, something shoul
             .catch(function(err) {
               this.fire('notify', { message: 'Failed to disable quota: ' + err, type: 'error' });
             }.bind(this));
+        },
+
+        _computeCanEdit: function(user, doc, canManage) {
+          if (user && user.isAdministrator) {
+            return true;
+          }
+          if (canManage) {
+            return true;
+          }
+          if (doc && this.hasPermission(doc, 'Everything')) {
+            return true;
+          }
+          return false;
+        },
+
+        _hasQuotaLimit: function(quotaObj) {
+          return quotaObj && quotaObj.quotaValue && quotaObj.quotaValue > 0;
+        },
+
+        _formatUsageText: function(quotaObj) {
+          if (!quotaObj) {
+            return '';
+          }
+          var usedStr = this._formatSizeStr(quotaObj.totalSize || 0);
+          var limitStr = this._formatSizeStr(quotaObj.quotaValue);
+          return usedStr + ' ' + this.i18n('label.quota.usage.of') + ' ' + limitStr;
+        },
+
+        _formatUsedOnly: function(quotaObj) {
+          if (!quotaObj) {
+            return '';
+          }
+          var usedStr = this._formatSizeStr(quotaObj.totalSize || 0);
+          return usedStr + ' ' + this.i18n('label.quota.usage.used');
+        },
+
+        _formatPercentage: function(quotaObj) {
+          if (!quotaObj || !quotaObj.quotaValue || quotaObj.quotaValue <= 0) {
+            return '0%';
+          }
+          var used = quotaObj.totalSize || 0;
+          var limit = quotaObj.quotaValue;
+          var pct = Math.round((used / limit) * 100);
+          return pct + '%';
+        },
+
+        _formatSizeStr: function(bytes) {
+          if (!bytes || bytes <= 0) {
+            return '0 B';
+          }
+          var vu = this.formatBytes(bytes);
+          return vu.value + ' ' + vu.unit;
         }
     });
   </script>

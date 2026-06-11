@@ -18,12 +18,11 @@
  */
 package nuxeo.quota.webui.operations.user;
 
-import static jakarta.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
-import static jakarta.servlet.http.HttpServletResponse.SC_FORBIDDEN;
-import static nuxeo.quota.webui.operations.user.QuotaUserGetForUser.ensureAdmin;
+import static nuxeo.quota.webui.QuotaUtils.ensureAdmin;
+import static nuxeo.quota.webui.QuotaUtils.parseQuotaSize;
+import static nuxeo.quota.webui.QuotaUtils.requireNotBlank;
 
 import org.json.JSONObject;
-import org.nuxeo.common.utils.SizeUtils;
 import org.nuxeo.ecm.automation.core.annotations.Context;
 import org.nuxeo.ecm.automation.core.annotations.Operation;
 import org.nuxeo.ecm.automation.core.annotations.OperationMethod;
@@ -31,7 +30,6 @@ import org.nuxeo.ecm.automation.core.annotations.Param;
 import org.nuxeo.ecm.core.api.Blob;
 import org.nuxeo.ecm.core.api.Blobs;
 import org.nuxeo.ecm.core.api.CoreSession;
-import org.nuxeo.ecm.core.api.NuxeoException;
 import org.nuxeo.runtime.api.Framework;
 
 import nuxeo.quota.webui.user.UserQuotaOverrideStore;
@@ -63,23 +61,21 @@ public class QuotaUserSetGroupOverride {
     @OperationMethod
     public Blob run() {
         ensureAdmin(session);
+        requireNotBlank(group, "Group");
 
-        if (group == null || group.isBlank()) {
-            throw new NuxeoException("Group is required", SC_BAD_REQUEST);
-        }
-
-        var store = new UserQuotaOverrideStore();
+        var service = Framework.getService(UserQuotaService.class);
+        var store = service.getOverrideStore();
         var repo = session.getRepositoryName();
 
         if (maxUploadSize != null) {
-            store.setGroupOverride(repo, group, UserQuotaOverrideStore.K_MAX_UPLOAD, parseSize(maxUploadSize));
+            store.setGroupOverride(repo, group, UserQuotaOverrideStore.K_MAX_UPLOAD, parseQuotaSize(maxUploadSize));
         }
         if (maxTotalQuota != null) {
-            store.setGroupOverride(repo, group, UserQuotaOverrideStore.K_MAX_TOTAL, parseSize(maxTotalQuota));
+            store.setGroupOverride(repo, group, UserQuotaOverrideStore.K_MAX_TOTAL, parseQuotaSize(maxTotalQuota));
         }
 
         // Invalidate limits cache — group changes can affect any user
-        Framework.getService(UserQuotaService.class).invalidateCache();
+        service.invalidateCache();
 
         // Echo back
         var json = new JSONObject();
@@ -89,16 +85,5 @@ public class QuotaUserSetGroupOverride {
         json.put("status", "ok");
 
         return Blobs.createJSONBlob(json.toString());
-    }
-
-    static long parseSize(String val) {
-        if ("-1".equals(val)) {
-            return -1L;
-        }
-        var parsed = SizeUtils.parseSizeInBytes(val);
-        if (parsed < 0) {
-            throw new NuxeoException("Invalid size: " + val, SC_BAD_REQUEST);
-        }
-        return parsed;
     }
 }

@@ -27,11 +27,9 @@ import java.util.Set;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.nuxeo.ecm.core.api.CoreSession;
-import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.bulk.action.computation.AbstractBulkComputation;
-import org.nuxeo.ecm.core.utils.BlobsExtractor;
-import org.nuxeo.ecm.quota.size.QuotaSizeService;
-import org.nuxeo.runtime.api.Framework;
+
+import nuxeo.quota.webui.QuotaUtils;
 
 /**
  * BAF computation that scans documents and updates per-user byte counters.
@@ -70,7 +68,7 @@ public class UserQuotaInitialComputationComputation extends AbstractBulkComputat
 
     @Override
     protected void compute(CoreSession session, List<String> ids, Map<String, Serializable> properties) {
-        var extractor = newBlobsExtractor();
+        var extractor = QuotaUtils.newBlobsExtractor();
         for (var doc : loadDocuments(session, ids)) {
             var creator = (String) doc.getPropertyValue("dc:creator");
             if (creator == null || creator.isBlank()) {
@@ -88,13 +86,5 @@ public class UserQuotaInitialComputationComputation extends AbstractBulkComputat
                 counter.addAndGet(session.getRepositoryName(), creator, size);
             }
         }
-    }
-
-    protected BlobsExtractor newBlobsExtractor() {
-        var sizeService = Framework.getService(QuotaSizeService.class);
-        var excludedPaths = sizeService.getExcludedPathList();
-        var extractor = new BlobsExtractor();
-        extractor.setExtractorProperties(null, new HashSet<>(excludedPaths), true);
-        return extractor;
     }
 }

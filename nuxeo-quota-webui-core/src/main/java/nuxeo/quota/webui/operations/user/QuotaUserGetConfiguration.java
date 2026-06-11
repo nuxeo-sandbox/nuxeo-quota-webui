@@ -18,6 +18,8 @@
  */
 package nuxeo.quota.webui.operations.user;
 
+import static nuxeo.quota.webui.QuotaUtils.ensureAdmin;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.nuxeo.ecm.automation.core.annotations.Context;
@@ -48,8 +50,10 @@ public class QuotaUserGetConfiguration {
 
     @OperationMethod
     public Blob run() {
+        ensureAdmin(session);
+
         var service = Framework.getService(UserQuotaService.class);
-        var store = new UserQuotaOverrideStore();
+        var store = service.getOverrideStore();
         var repo = session.getRepositoryName();
 
         var json = new JSONObject();

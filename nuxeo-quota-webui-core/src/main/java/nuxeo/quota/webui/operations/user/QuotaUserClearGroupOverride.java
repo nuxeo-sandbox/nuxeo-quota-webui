@@ -19,7 +19,8 @@
 package nuxeo.quota.webui.operations.user;
 
 import static jakarta.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
-import static nuxeo.quota.webui.operations.user.QuotaUserGetForUser.ensureAdmin;
+import static nuxeo.quota.webui.QuotaUtils.ensureAdmin;
+import static nuxeo.quota.webui.QuotaUtils.requireNotBlank;
 
 import org.json.JSONObject;
 import org.nuxeo.ecm.automation.core.annotations.Context;
@@ -58,12 +59,10 @@ public class QuotaUserClearGroupOverride {
     @OperationMethod
     public Blob run() {
         ensureAdmin(session);
+        requireNotBlank(group, "Group");
 
-        if (group == null || group.isBlank()) {
-            throw new NuxeoException("Group is required", SC_BAD_REQUEST);
-        }
-
-        var store = new UserQuotaOverrideStore();
+        var service = Framework.getService(UserQuotaService.class);
+        var store = service.getOverrideStore();
         var repo = session.getRepositoryName();
 
         if (key == null || key.isBlank()) {
@@ -75,7 +74,7 @@ public class QuotaUserClearGroupOverride {
         }
 
         // Invalidate limits cache — group changes can affect any user
-        Framework.getService(UserQuotaService.class).invalidateCache();
+        service.invalidateCache();
 
         var json = new JSONObject();
         json.put("cleared", true);

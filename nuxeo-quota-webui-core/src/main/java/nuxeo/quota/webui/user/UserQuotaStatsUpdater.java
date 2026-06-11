@@ -18,8 +18,6 @@
  */
 package nuxeo.quota.webui.user;
 
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
@@ -27,17 +25,16 @@ import org.apache.logging.log4j.Logger;
 import org.nuxeo.ecm.core.api.Blob;
 import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.core.api.DocumentModel;
-import org.nuxeo.ecm.core.api.DocumentRef;
 import org.nuxeo.ecm.core.api.UnrestrictedSessionRunner;
 import org.nuxeo.ecm.core.api.event.DocumentEventTypes;
 import org.nuxeo.ecm.core.event.Event;
-import org.nuxeo.ecm.core.utils.BlobsExtractor;
 import org.nuxeo.ecm.quota.AbstractQuotaStatsUpdater;
 import org.nuxeo.ecm.quota.QuotaStatsInitialWork;
 import org.nuxeo.ecm.quota.size.DocumentsSizeUpdater;
 import org.nuxeo.ecm.quota.size.QuotaExceededException;
-import org.nuxeo.ecm.quota.size.QuotaSizeService;
 import org.nuxeo.runtime.api.Framework;
+
+import nuxeo.quota.webui.QuotaUtils;
 
 /**
  * Per-user quota stats updater.
@@ -96,7 +93,7 @@ public class UserQuotaStatsUpdater extends AbstractQuotaStatsUpdater {
             @Override
             public void run() {
                 var oldDoc = session.getDocument(doc.getRef());
-                var extractor = newBlobsExtractor();
+                var extractor = QuotaUtils.newBlobsExtractor();
                 var blobs = extractor.getBlobs(oldDoc);
                 if (blobs != null) {
                     for (var b : blobs) {
@@ -206,7 +203,7 @@ public class UserQuotaStatsUpdater extends AbstractQuotaStatsUpdater {
         var name = event.getName();
         if (DocumentEventTypes.DOCUMENT_CREATED.equals(name)
                 || DocumentEventTypes.DOCUMENT_CREATED_BY_COPY.equals(name)) {
-            var blobs = newBlobsExtractor().getBlobs(doc);
+            var blobs = QuotaUtils.newBlobsExtractor().getBlobs(doc);
             if (blobs == null || blobs.isEmpty()) {
                 return false;
             }
@@ -297,15 +294,7 @@ public class UserQuotaStatsUpdater extends AbstractQuotaStatsUpdater {
     }
 
     protected List<Blob> getAllBlobs(DocumentModel doc) {
-        return newBlobsExtractor().getBlobs(doc);
-    }
-
-    protected BlobsExtractor newBlobsExtractor() {
-        var sizeService = Framework.getService(QuotaSizeService.class);
-        var excludedPaths = sizeService.getExcludedPathList();
-        var extractor = new BlobsExtractor();
-        extractor.setExtractorProperties(null, new HashSet<>(excludedPaths), true);
-        return extractor;
+        return QuotaUtils.newBlobsExtractor().getBlobs(doc);
     }
 
     // --- Helpers ---

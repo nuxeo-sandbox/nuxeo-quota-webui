@@ -241,6 +241,54 @@ You should not need to use these operations, they are listed here FYI.
 | `Quota.User.RecomputeUsers` | Recompute counters for specific user(s) — BAF (admin) |
 | `Quota.User.RecomputeAll` | Recompute counters for all users — BAF (admin) |
 
+##### Operation Security
+
+All quota-modifying operations require administrator privileges:
+
+| Operation | Protection |
+|---|---|
+| `Quota.SetOnUserWorkspaces` | Java-level admin check |
+| `Quota.LaunchInitialComputation` | Java-level admin check |
+| `Quota.User.GetConfiguration` | Java-level admin check |
+| `Quota.User.*` (Set/Clear overrides, GetForUser, Recompute) | Java-level admin check |
+| `Quotas.SetMaxSize` (platform) | REST binding (admin-only) |
+
+The Java-level check is centralized in `nuxeo.quota.webui.QuotaUtils.ensureAdmin(CoreSession)`. A user passes the check when **any** of the following is true:
+
+1. The principal is a Nuxeo administrator (`NuxeoPrincipal.isAdministrator()`).
+2. The principal's user ID is listed in the `nuxeo.quota.webui.admin.users` property.
+3. The principal is a member of any group listed in the `nuxeo.quota.webui.admin.groups` property.
+
+**Configuring Quota Administrators (`nuxeo.conf`)**
+
+```properties
+# Groups whose members can manage quotas (comma-separated). Default: administrators
+nuxeo.quota.webui.admin.groups=administrators,quota-managers
+
+# Specific user IDs allowed to manage quotas (comma-separated). Default: (empty)
+nuxeo.quota.webui.admin.users=jdoe,asmith
+```
+
+Both properties are read live (no restart needed after `nuxeoctl restart` once `nuxeo.conf` is changed; properties are not cached). To allow only Nuxeo administrators, leave both unset or set `nuxeo.quota.webui.admin.groups=administrators`.
+
+The UI honors the same resolution via the helper operation `Quota.CanManageQuotas`, which returns `{ "canManage": true|false }` for the current user. The document tab uses this to decide whether to render edit controls; the server always re-validates.
+
+**Customizing `Quotas.SetMaxSize` Access**
+
+The platform operation `Quotas.SetMaxSize` (used to set container quotas) is restricted to administrators via a REST binding contributed by this plugin. Because the operation source is owned by the platform, `ensureAdmin()` cannot be added inside it, so the REST binding is the enforcement point and is independent of `nuxeo.quota.webui.admin.groups`. To allow additional groups to set container quotas, override the binding in your own XML contribution:
+
+```xml
+<require>nuxeo.quota.webui.automation.bindings</require>
+<extension target="org.nuxeo.ecm.automation.server.AutomationServer" point="bindings">
+  <binding name="Quotas.SetMaxSize">
+    <administrator>true</administrator>
+    <groups>powerusers,quota-managers</groups>
+  </binding>
+</extension>
+```
+
+See [Filtering Exposed Operations](https://doc.nuxeo.com/nxdoc/filtering-exposed-operations/) for more details.
+
 ## Known Issue(s)
 
 #### Labels Display Translation Keys

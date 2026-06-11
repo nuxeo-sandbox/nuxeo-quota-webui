@@ -18,7 +18,7 @@
  */
 package nuxeo.quota.webui.operations.user;
 
-import static jakarta.servlet.http.HttpServletResponse.SC_FORBIDDEN;
+import static nuxeo.quota.webui.QuotaUtils.ensureAdmin;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -34,7 +34,6 @@ import org.nuxeo.ecm.automation.core.annotations.Param;
 import org.nuxeo.ecm.core.api.Blob;
 import org.nuxeo.ecm.core.api.Blobs;
 import org.nuxeo.ecm.core.api.CoreSession;
-import org.nuxeo.ecm.core.api.NuxeoException;
 import org.nuxeo.ecm.core.bulk.BulkService;
 import org.nuxeo.ecm.core.bulk.message.BulkCommand;
 import org.nuxeo.ecm.platform.usermanager.UserManager;
@@ -66,9 +65,7 @@ public class QuotaUserRecomputeUsers {
 
     @OperationMethod
     public Blob run() throws IOException {
-        if (!session.getPrincipal().isAdministrator()) {
-            throw new NuxeoException("Administrator required", SC_FORBIDDEN);
-        }
+        ensureAdmin(session);
 
         var userManager = Framework.getService(UserManager.class);
         var counter = new UserQuotaCounter();

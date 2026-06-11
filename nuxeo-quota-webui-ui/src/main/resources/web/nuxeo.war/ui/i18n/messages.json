@@ -62,5 +62,7 @@
   "action.quota.user.recompute.users": "Recompute selected users",
   "action.quota.user.recompute.all": "Recompute all users",
   "label.quota.user.recompute.submitted": "Per-user counter recompute submitted (command {0}).",
-  "label.quota.user.recompute.done": "Per-user counter recompute completed: {0} user(s) processed, {1} skipped."
+  "label.quota.user.recompute.done": "Per-user counter recompute completed: {0} user(s) processed, {1} skipped.",
+  "label.quota.usage.of": "used of",
+  "label.quota.usage.used": "used (no limit)"
 }

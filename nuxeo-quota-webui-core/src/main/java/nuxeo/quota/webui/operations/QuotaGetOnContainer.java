@@ -58,6 +58,7 @@ public class QuotaGetOnContainer {
         }
 
         long maxSize = -1;
+        long totalSize = 0;
         // This is what original JSF action is doing (QuotaStatsAction#isQuotaSetOnCurrentDocument)
         // the quota info set on the userworkspaces root should be ignored
         if ("UserWorkspacesRoot".equals(input.getType())) {
@@ -66,9 +67,11 @@ public class QuotaGetOnContainer {
             var qa = input.getAdapter(QuotaAware.class);
             if (qa != null) {
                 maxSize = qa.getMaxQuota();
+                totalSize = qa.getTotalSize();
             }
         }
         jsonObj.put("quotaValue", maxSize);
+        jsonObj.put("totalSize", totalSize);
 
         var maxSizeJson = QuotaConfigInfo.getMaxQuotaSize();
         jsonObj.put("maxQuotaSize", maxSizeJson.get("maxQuotaSize"));

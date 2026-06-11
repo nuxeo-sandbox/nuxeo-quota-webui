@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2023 Hyland (http://hyland.com/)  and others.
+ * (C) Copyright 2025 Hyland (http://hyland.com/) and others.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,42 +18,41 @@
  */
 package nuxeo.quota.webui.operations;
 
-import static nuxeo.quota.webui.QuotaUtils.ensureAdmin;
-
+import org.json.JSONObject;
 import org.nuxeo.ecm.automation.core.annotations.Context;
 import org.nuxeo.ecm.automation.core.annotations.Operation;
 import org.nuxeo.ecm.automation.core.annotations.OperationMethod;
-import org.nuxeo.ecm.automation.core.annotations.Param;
 import org.nuxeo.ecm.core.api.Blob;
 import org.nuxeo.ecm.core.api.Blobs;
 import org.nuxeo.ecm.core.api.CoreSession;
-import org.nuxeo.ecm.quota.QuotaStatsService;
+
+import nuxeo.quota.webui.QuotaUtils;
 
 /**
+ * Returns whether the current user is allowed to manage quotas, as resolved by
+ * {@link QuotaUtils#isQuotaAdmin}.
+ * <p>
+ * Used by the UI to decide whether to render quota edit controls. Server-side
+ * operations always re-validate via {@link QuotaUtils#ensureAdmin}.
  *
+ * @since 2025.1
  */
-@Operation(id = QuotaSetOnUserWorkspaces.ID, category = "Quotas", label = "Quota: Set on User Workspaces", description = "Activate quota on all user workspaces.")
-public class QuotaSetOnUserWorkspaces {
+@Operation(id = QuotaCanManageQuotas.ID,
+        category = "Quotas",
+        label = "Quota: Can Manage Quotas",
+        description = "Returns {\"canManage\": true|false} for the current user, honoring "
+                + "nuxeo.quota.webui.admin.groups and nuxeo.quota.webui.admin.users.")
+public class QuotaCanManageQuotas {
 
-    public static final String ID = "Quota.SetOnUserWorkspaces";
+    public static final String ID = "Quota.CanManageQuotas";
 
     @Context
     protected CoreSession session;
 
-    @Context
-    QuotaStatsService quotaStatsService;
-
-    @Param(name = "maxSize", required = true)
-    protected Long maxSize;
-
     @OperationMethod
     public Blob run() {
-        ensureAdmin(session);
-
-        quotaStatsService.activateQuotaOnUserWorkspaces(maxSize, session);
-        quotaStatsService.launchSetMaxQuotaOnUserWorkspaces(maxSize, session.getRootDocument(), session);
-
-        return Blobs.createJSONBlob("{\"status\": \"started\"}");
-
+        var json = new JSONObject();
+        json.put("canManage", QuotaUtils.isQuotaAdmin(session.getPrincipal()));
+        return Blobs.createJSONBlob(json.toString());
     }
 }

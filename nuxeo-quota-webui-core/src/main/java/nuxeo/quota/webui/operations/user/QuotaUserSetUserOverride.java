@@ -18,9 +18,9 @@
  */
 package nuxeo.quota.webui.operations.user;
 
-import static jakarta.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
-import static nuxeo.quota.webui.operations.user.QuotaUserGetForUser.ensureAdmin;
-import static nuxeo.quota.webui.operations.user.QuotaUserSetGroupOverride.parseSize;
+import static nuxeo.quota.webui.QuotaUtils.ensureAdmin;
+import static nuxeo.quota.webui.QuotaUtils.parseQuotaSize;
+import static nuxeo.quota.webui.QuotaUtils.requireNotBlank;
 
 import org.json.JSONObject;
 import org.nuxeo.ecm.automation.core.annotations.Context;
@@ -30,7 +30,6 @@ import org.nuxeo.ecm.automation.core.annotations.Param;
 import org.nuxeo.ecm.core.api.Blob;
 import org.nuxeo.ecm.core.api.Blobs;
 import org.nuxeo.ecm.core.api.CoreSession;
-import org.nuxeo.ecm.core.api.NuxeoException;
 import org.nuxeo.runtime.api.Framework;
 
 import nuxeo.quota.webui.user.UserQuotaOverrideStore;
@@ -62,23 +61,21 @@ public class QuotaUserSetUserOverride {
     @OperationMethod
     public Blob run() {
         ensureAdmin(session);
+        requireNotBlank(username, "Username");
 
-        if (username == null || username.isBlank()) {
-            throw new NuxeoException("Username is required", SC_BAD_REQUEST);
-        }
-
-        var store = new UserQuotaOverrideStore();
+        var service = Framework.getService(UserQuotaService.class);
+        var store = service.getOverrideStore();
         var repo = session.getRepositoryName();
 
         if (maxUploadSize != null) {
-            store.setUserOverride(repo, username, UserQuotaOverrideStore.K_MAX_UPLOAD, parseSize(maxUploadSize));
+            store.setUserOverride(repo, username, UserQuotaOverrideStore.K_MAX_UPLOAD, parseQuotaSize(maxUploadSize));
         }
         if (maxTotalQuota != null) {
-            store.setUserOverride(repo, username, UserQuotaOverrideStore.K_MAX_TOTAL, parseSize(maxTotalQuota));
+            store.setUserOverride(repo, username, UserQuotaOverrideStore.K_MAX_TOTAL, parseQuotaSize(maxTotalQuota));
         }
 
         // Invalidate limits cache for this user
-        Framework.getService(UserQuotaService.class).invalidateCacheForUser(username, repo);
+        service.invalidateCacheForUser(username, repo);
 
         var json = new JSONObject();
         json.put("username", username);
