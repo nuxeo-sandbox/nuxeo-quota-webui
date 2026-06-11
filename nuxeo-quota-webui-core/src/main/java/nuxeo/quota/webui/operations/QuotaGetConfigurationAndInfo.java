@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2023 Hyland (http://hyland.com/)  and others.
+ * (C) Copyright 2026 Hyland (http://hyland.com/)  and others.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,6 @@
  */
 package nuxeo.quota.webui.operations;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import org.json.JSONObject;
 import org.nuxeo.ecm.automation.core.annotations.Context;
 import org.nuxeo.ecm.automation.core.annotations.Operation;
@@ -29,25 +26,23 @@ import org.nuxeo.ecm.core.api.Blob;
 import org.nuxeo.ecm.core.api.Blobs;
 import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.core.work.api.WorkManager;
-import org.nuxeo.ecm.core.work.api.WorkQueueMetrics;
 import org.nuxeo.ecm.quota.QuotaStatsService;
 
 import nuxeo.quota.webui.QuotaConfigInfo;
 
 /**
- * We get values as they were used in the deprecated jsf QuotaStatsActions.java
+ * Returns the max quota size, the current quota set on user workspaces, and whether a quota
+ * computation work is currently running.
+ * <p>
+ * We get values as they were used in the deprecated jsf QuotaStatsActions.java.
+ *
+ * @since 2025.1
  */
-@Operation(id = QuotaGetConfigurationAndInfo.ID, category = "Quotas", label = "Quota: Get Configuration", description = ""
-        + "Return the misc configuration settings")
+@Operation(id = QuotaGetConfigurationAndInfo.ID, category = "Quotas", label = "Quota: Get Configuration", description = "Return the misc configuration settings")
 public class QuotaGetConfigurationAndInfo {
 
-    private static final Logger log = LogManager.getLogger(QuotaGetConfigurationAndInfo.class);
-
+    /** @since 2025.1 */
     public static final String ID = "Quota.GetConfigurationAndInfo";
-
-    public static final String QUOTA_MAX_SIZE_PROP = "nuxeo.quota.maxsize";
-
-    public static final String QUOTA_MAX_SIZE_DEFAULT = "999 GB";
 
     @Context
     protected CoreSession session;
@@ -61,15 +56,15 @@ public class QuotaGetConfigurationAndInfo {
     @OperationMethod
     public Blob run() {
 
-        JSONObject jsonObj = new JSONObject();
+        var jsonObj = new JSONObject();
 
-        JSONObject maxSizeJson = QuotaConfigInfo.getMaxQuotaSize();
+        var maxSizeJson = QuotaConfigInfo.getMaxQuotaSize();
         jsonObj.put("maxQuotaSize", maxSizeJson.get("maxQuotaSize"));
         jsonObj.put("maxQuotaSizeStr", maxSizeJson.get("maxQuotaSizeStr"));
 
         // Is something running?
         boolean running = false;
-        WorkQueueMetrics metrics = workManager.getMetrics("quota");
+        var metrics = workManager.getMetrics("quota");
         if (metrics != null) {
             running = metrics.getRunning().longValue() + metrics.getScheduled().longValue() > 0;
         }

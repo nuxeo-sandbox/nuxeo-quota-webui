@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2023 Hyland (http://hyland.com/)  and others.
+ * (C) Copyright 2026 Hyland (http://hyland.com/)  and others.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,11 +28,14 @@ import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.quota.QuotaStatsService;
 
 /**
+ * Activates quota on all user workspaces with the given {@code maxSize} (in bytes).
  *
+ * @since 2025.1
  */
 @Operation(id = QuotaSetOnUserWorkspaces.ID, category = "Quotas", label = "Quota: Set on User Workspaces", description = "Activate quota on all user workspaces.")
 public class QuotaSetOnUserWorkspaces {
 
+    /** @since 2025.1 */
     public static final String ID = "Quota.SetOnUserWorkspaces";
 
     @Context
@@ -46,7 +49,7 @@ public class QuotaSetOnUserWorkspaces {
 
     @OperationMethod
     public Blob run() {
-        
+
         quotaStatsService.activateQuotaOnUserWorkspaces(maxSize, session);
         quotaStatsService.launchSetMaxQuotaOnUserWorkspaces(maxSize, session.getRootDocument(), session);
 

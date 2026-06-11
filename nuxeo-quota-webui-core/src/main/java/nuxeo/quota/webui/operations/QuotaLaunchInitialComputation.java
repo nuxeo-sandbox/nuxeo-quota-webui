@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2023 Hyland (http://hyland.com/)  and others.
+ * (C) Copyright 2026 Hyland (http://hyland.com/)  and others.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,11 +26,15 @@ import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.quota.QuotaStatsService;
 
 /**
+ * Asynchronously triggers the initial quota statistics computation for the updater whose name is
+ * passed as the {@code updaterName} parameter.
  *
+ * @since 2025.1
  */
 @Operation(id = QuotaLaunchInitialComputation.ID, category = "Quotas", label = "Quota: Launch Initial Computation", description = "Launch the (asynchronous) computation for the updater passed as parameter.")
 public class QuotaLaunchInitialComputation {
 
+    /** @since 2025.1 */
     public static final String ID = "Quota.LaunchInitialComputation";
 
     @Context

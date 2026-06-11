@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2023 Hyland (http://hyland.com/)  and others.
+ * (C) Copyright 2026 Hyland (http://hyland.com/)  and others.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,6 @@
  */
 package nuxeo.quota.webui.operations;
 
-import java.util.List;
-
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.nuxeo.ecm.automation.core.annotations.Context;
@@ -29,16 +27,20 @@ import org.nuxeo.ecm.core.api.Blob;
 import org.nuxeo.ecm.core.api.Blobs;
 import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.quota.QuotaStatsService;
-import org.nuxeo.ecm.quota.QuotaStatsUpdater;
 
 /**
+ * Returns a JSON array of per-updater progress status. Entries report {@link #NO_STATUS} when no
+ * computation is in progress for that updater.
  *
+ * @since 2025.1
  */
 @Operation(id = QuotaGetStatus.ID, category = "Quotas", label = "Quota: Get Status", description = "Get status of quotas, returns a JSON array of updater label and status.")
 public class QuotaGetStatus {
 
+    /** @since 2025.1 */
     public static final String ID = "Quota.GetStatus";
 
+    /** @since 2025.1 */
     public static final String NO_STATUS = "Not running";
 
     @Context
@@ -49,14 +51,14 @@ public class QuotaGetStatus {
 
     @OperationMethod
     public Blob run() {
-        List<QuotaStatsUpdater> updaters = quotaStatsService.getQuotaStatsUpdaters();
-        JSONArray jsonArr = new JSONArray();
-        for (QuotaStatsUpdater updater : updaters) {
-            String status = quotaStatsService.getProgressStatus(updater.getName(), session.getRepositoryName());
+        var updaters = quotaStatsService.getQuotaStatsUpdaters();
+        var jsonArr = new JSONArray();
+        for (var updater : updaters) {
+            var status = quotaStatsService.getProgressStatus(updater.getName(), session.getRepositoryName());
             if (status == null) {
                 status = NO_STATUS;
             }
-            JSONObject jsonObj = new JSONObject();
+            var jsonObj = new JSONObject();
             jsonObj.put("updaterName", updater.getName());
             jsonObj.put("updaterLabel", updater.getLabel());
             jsonObj.put("status", status);
