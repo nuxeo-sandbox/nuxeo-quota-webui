@@ -128,7 +128,7 @@ admin-userws) that don't cleanly factor through a behavior.
               // Nothing, _originalQuotaChanged() will be called
             }.bind(this))
             .catch(function(error) {
-              alert("An error occured:\n" + error)
+              this.fire('notify', { message: "An error occured loading the quota for this container.", errorDetails: String(error), duration: 8000 });
             }.bind(this))
         }
       },
@@ -163,7 +163,7 @@ admin-userws) that don't cleanly factor through a behavior.
         let valueBytes = this.getValueBytes(this.quotaValue, this.quotaUnit);
         if(this.originalQuota && valueBytes > this.originalQuota.maxQuotaSize) {
           
-          alert("Value can't be greater than " + this.originalQuota.maxQuotaSizeStr);
+          this.fire('notify', { message: "Value can't be greater than " + this.originalQuota.maxQuotaSizeStr, duration: 4000 });
           let valueAndUnit = this.formatBytes(this.originalQuota.maxQuotaSize);
           this.quotaValue = valueAndUnit.value;
           this.quotaUnit = valueAndUnit.unit;
@@ -187,7 +187,7 @@ admin-userws) that don't cleanly factor through a behavior.
         let maxSizeBytes = null;
         let msg;
         if(this.quotaValue <= 0 || !this.quotaUnit) {
-          alert("Invalid value: <" + this.quotaValue + " " + this.quotaUnit + ">");
+          this.fire('notify', { message: "Invalid value: <" + this.quotaValue + " " + this.quotaUnit + ">", duration: 4000 });
         } else {
           if(confirm("Set max quota for this container (" + this.document.title + ") to " + this.quotaValue + " " + this.quotaUnit + "?")) {
             maxSizeBytes = this.getValueBytes(this.quotaValue, this.quotaUnit);
@@ -205,8 +205,8 @@ admin-userws) that don't cleanly factor through a behavior.
                 this._documentChanged(this.document);
               }.bind(this))
               .catch(function(err) {
-                alert("An error occured: " + err);
-              })
+                this.fire('notify', { message: "An error occured saving the quota.", errorDetails: String(err), duration: 8000 });
+              }.bind(this))
           }
         },
 
@@ -224,7 +224,7 @@ admin-userws) that don't cleanly factor through a behavior.
               this._documentChanged(this.document);
             }.bind(this))
             .catch(function(error) {
-              alert("An error occured: " + error);
+              this.fire('notify', { message: "An error occured disabling the quota.", errorDetails: String(error), duration: 8000 });
             }.bind(this));
         }
     });

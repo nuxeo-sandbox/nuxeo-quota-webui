@@ -137,7 +137,7 @@ for-document) that don't cleanly factor through a behavior.
       _checkQuotaValue: function() {
         let valueBytes = this.getValueBytes(this.quotaValue, this.quotaUnit);
         if(this.quotaConfig && valueBytes > this.quotaConfig.maxQuotaSize) {
-          alert("Value can't be greater than " + this.quotaConfig.maxQuotaSizeStr);
+          this.fire('notify', { message: "Value can't be greater than " + this.quotaConfig.maxQuotaSizeStr, duration: 4000 });
           let valueAndUnit = this.formatBytes(this.quotaConfig.maxQuotaSize);
           this.quotaValue = valueAndUnit.value;
           this.quotaUnit = valueAndUnit.unit;
@@ -167,7 +167,7 @@ for-document) that don't cleanly factor through a behavior.
           }
         } else {
           if(this.quotaValue <= 0 || !this.quotaUnit) {
-            alert("Invalid value: <" + this.quotaValue + " " + this.quotaUnit + ">");
+            this.fire('notify', { message: "Invalid value: <" + this.quotaValue + " " + this.quotaUnit + ">", duration: 4000 });
           } else {
             if(confirm("Set max quota for User Workspaces to " + this.quotaValue + " " + this.quotaUnit + "?")) {
               maxSizeBytes = this.getValueBytes(this.quotaValue, this.quotaUnit);
@@ -184,8 +184,8 @@ for-document) that don't cleanly factor through a behavior.
               this.fire('notify', { message: msg });
             }.bind(this))
             .catch(function(err) {
-              alert("An error occured: " + err);
-            })
+              this.fire('notify', { message: "An error occured saving the User Workspaces quota.", errorDetails: String(err), duration: 8000 });
+            }.bind(this))
         }
       }
     });

@@ -171,7 +171,7 @@ Contributors:
               this.$.getStatusOp.execute();
             }.bind(this))
             .catch(function(err) {
-              alert("An error occured: " + err);
+              this.fire('notify', { message: "An error occured launching the computation.", errorDetails: String(err), duration: 8000 });
             }.bind(this))
         }
       }

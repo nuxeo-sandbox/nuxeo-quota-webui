@@ -139,7 +139,7 @@ Contributors:
               this.analytics = result;
             }.bind(this))
             .catch(function(err) {
-              alert("An error occured: " + err);
+              this.fire('notify', { message: "An error occured loading quota statistics.", errorDetails: String(err), duration: 8000 });
             }.bind(this))
         }
       },
