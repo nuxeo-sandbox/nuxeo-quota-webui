@@ -15,9 +15,12 @@ limitations under the License.
 Contributors:
   Thibaud Arguillere (thibarg)
 
-TODO: As several parts are shared with nuxeo-quota-for-document, something should be
-      done to centralize the things (units, handling values, etc.). Some utilities
-      are centralized in QuotaBehavior, like units, formating bytes, ...
+Shared with nuxeo-quota-for-document via Nuxeo.QuotaBehavior
+(unit dropdown via getUnitsForDropDown, formatBytes, getValueBytes).
+The per-element observers (_quotaValueChanged, _checkQuotaValue, ...)
+intentionally stay local: they reference element-specific button IDs
+and source-of-truth properties (quotaConfig here, originalQuota in
+for-document) that don't cleanly factor through a behavior.
 -->
 <link rel="import" href="nuxeo-quota-behavior.html">
 <dom-module id="nuxeo-quota-admin-userws">
@@ -57,7 +60,7 @@ TODO: As several parts are shared with nuxeo-quota-for-document, something shoul
         <nuxeo-select id="quotaUnit"
                       label="Unit"
                       selected="{{quotaUnit}}"
-                      options="[[_getUnits()]]"
+                      options="[[getUnitsForDropDown()]]"
                       style="margin-left: 25px"
                       disabled>
         </nuxeo-select>
@@ -103,10 +106,6 @@ TODO: As several parts are shared with nuxeo-quota-for-document, something shoul
           value:"MB",
           observer: "_quotaUnitChanged"
         }
-      },
-
-      _getUnits: function() {
-        return this.getUnitsForDropDown();
       },
 
       _quotaConfigChanged: function(newValue) {
