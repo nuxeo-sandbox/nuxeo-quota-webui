@@ -1,6 +1,7 @@
 # nuxeo-quota-webui
 
-
+> [!CAUTION]
+> Version 2025.1.0-SNAPSHOT (for Nuxeo LTS 2025), in the `master` branch, is work in progress, still under developpment, and using GitHub as backup: **do not use it until it is released and available on Nuxeo Marketplace**.
 
 ## Features
 
