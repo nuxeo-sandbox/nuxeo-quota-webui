@@ -15,6 +15,7 @@ limitations under the License.
 Contributors:
   Thibaud Arguillere (thibarg)
 -->
+<link rel="import" href="nuxeo-quota-behavior.html">
 <dom-module id="nuxeo-quota-stats">
   <template>
     <style include="iron-flex iron-flex-alignment nuxeo-styles">
@@ -57,7 +58,7 @@ Contributors:
 
     Polymer({
       is: 'nuxeo-quota-stats',
-      behaviors: [Nuxeo.LayoutBehavior],
+      behaviors: [Nuxeo.LayoutBehavior, Nuxeo.QuotaBehavior],
       properties: {
         document: {
           type: Object,
@@ -178,8 +179,20 @@ Contributors:
         }
 
         if(what === "labels") {
-          // Just a quick format for fun
-          return analytics.map((obj) => obj.label.replace(" Size:", " (") + ")");
+          // Re-format labels from raw bytes (analytics[i].data) instead of trusting the
+          // platform's pre-formatted label string. In LTS 2025 the platform's
+          // GetQuotaStatisticsOperation produces malformed unit names like "GiBiBytes" /
+          // "KiBiBytes" (SizeUtils changes). Build "<name> (<value> <unit>)" ourselves.
+          // For zero bytes show just "0" (no unit) — formatBytes() returns an undefined
+          // value field when bytes <= 0.
+          return analytics.map(function(obj) {
+            var name = obj.label.split(" Size:")[0];
+            if(!obj.data || obj.data <= 0) {
+              return name + " (0)";
+            }
+            var vu = this.formatBytes(obj.data);
+            return name + " (" + vu.value + " " + vu.unit + ")";
+          }.bind(this));
         }
 
         if(what === "values") {

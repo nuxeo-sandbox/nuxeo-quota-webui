@@ -138,7 +138,7 @@ TODO: As several parts are shared with nuxeo-quota-for-document, something shoul
       _checkQuotaValue: function() {
         let valueBytes = this.getValueBytes(this.quotaValue, this.quotaUnit);
         if(this.quotaConfig && valueBytes > this.quotaConfig.maxQuotaSize) {
-          alert("Value can't be greater than " + this.quotaConfig.maxQuotaSizeStr);
+          this.fire('notify', { message: "Value can't be greater than " + this.quotaConfig.maxQuotaSizeStr, type: 'error' });
           let valueAndUnit = this.formatBytes(this.quotaConfig.maxQuotaSize);
           this.quotaValue = valueAndUnit.value;
           this.quotaUnit = valueAndUnit.unit;
@@ -168,7 +168,7 @@ TODO: As several parts are shared with nuxeo-quota-for-document, something shoul
           }
         } else {
           if(this.quotaValue <= 0 || !this.quotaUnit) {
-            alert("Invalid value: <" + this.quotaValue + " " + this.quotaUnit + ">");
+            this.fire('notify', { message: "Invalid value: <" + this.quotaValue + " " + this.quotaUnit + ">", type: 'error' });
           } else {
             if(confirm("Set max quota for User Workspaces to " + this.quotaValue + " " + this.quotaUnit + "?")) {
               maxSizeBytes = this.getValueBytes(this.quotaValue, this.quotaUnit);
@@ -185,8 +185,8 @@ TODO: As several parts are shared with nuxeo-quota-for-document, something shoul
               this.fire('notify', { message: msg });
             }.bind(this))
             .catch(function(err) {
-              alert("An error occured: " + err);
-            })
+              this.fire('notify', { message: "An error occured: " + err, type: 'error' });
+            }.bind(this))
         }
       }
     });

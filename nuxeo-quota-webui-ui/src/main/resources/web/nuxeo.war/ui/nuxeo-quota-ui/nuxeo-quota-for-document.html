@@ -147,6 +147,7 @@ TODO: As several parts are shared with nuxeo-quota-for-document, something shoul
         },
         quotaValue: {
           type: Number,
+          value: null,
           observer: "_quotaValueChanged"
         },
         quotaUnit: {
@@ -205,11 +206,11 @@ TODO: As several parts are shared with nuxeo-quota-for-document, something shoul
         }
 
         // Only update button states if _canEdit and buttons exist
-        if(this._canEdit && this.$.disableQuota) {
+        if(this._canEdit && this.$$('#disableQuota')) {
           if(result && result.quotaValue > 0) {
-            this.$.disableQuota.disabled = false;
+            this.$$('#disableQuota').disabled = false;
           } else {
-            this.$.disableQuota.disabled = true;
+            this.$$('#disableQuota').disabled = true;
           }
         }
       },
@@ -226,9 +227,13 @@ TODO: As several parts are shared with nuxeo-quota-for-document, something shoul
       },
 
       _quotaValueChanged: function(value) {
+        // Dom-if ready?
+        if(!this.$$ || !this.$$('#saveQuota')) {
+          return;
+        }
         let disable = value <= 0;
-        if(this.$.saveQuota.disabled !== disable) {
-          this.$.saveQuota.disabled = disable;
+        if(this.$$('#saveQuota').disabled !== disable) {
+          this.$$('#saveQuota').disabled = disable;
         }
 
         this._checkQuotaValue();
