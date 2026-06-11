@@ -33,9 +33,16 @@ Contributors:
 
 <!-- Quota on some containers -->
 <!-- Contribution of element 'nuxeo-page-item' for slot 'DOCUMENT_VIEWS_ITEMS' -->
+<!-- Container types are configurable via the runtime property
+     'nuxeo.quota.containersfilter' (default: Domain,Workspace), exposed
+     to the front-end at Nuxeo.UI.config.quota.containersfilter by
+     /nuxeo/ui/config.jsp. The nuxeo-filter 'expression' attribute is
+     eval'd at global scope (see nuxeo-filter.js _evaluate), so it can
+     reach Nuxeo.UI.config — slot-content [[bindings]] cannot. -->
 <nuxeo-slot-content name="quotaOnContainer" slot="DOCUMENT_VIEWS_ITEMS" order="100">
   <template>
-    <nuxeo-filter document="[[document]]" expression="document.isVersion &#x3D;&#x3D;&#x3D; false" type="Domain,Workspace" user=[[user]]">
+    <nuxeo-filter document="[[document]]" user="[[user]]"
+                  expression="!document.isVersion &amp;&amp; Nuxeo.UI.config.get('quota.containersfilter', 'Domain,Workspace').split(',').map(function(t){return t.trim();}).indexOf(document.type) !== -1">
       <template>
         <nuxeo-page-item label="adm.quota.statistics" name="quotaoncontainer"></nuxeo-page-item>
       </template>
