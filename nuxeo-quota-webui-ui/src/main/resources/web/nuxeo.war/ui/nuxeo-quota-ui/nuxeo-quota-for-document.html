@@ -22,6 +22,13 @@ intentionally stay local: they reference element-specific button IDs
 and source-of-truth properties (originalQuota here, quotaConfig in
 admin-userws) that don't cleanly factor through a behavior.
 -->
+<!--
+  paper-tabs / paper-tab / iron-pages are not imported explicitly:
+  the host Web UI has already loaded them as transitive deps (same as
+  paper-button below). Adding our own import via a relative path would
+  not resolve at runtime since this plugin ships into nuxeo.war and
+  has no bower_components of its own.
+-->
 <link rel="import" href="nuxeo-quota-stats.html">
 <link rel="import" href="nuxeo-quota-heaviest-list.html">
 <link rel="import" href="nuxeo-quota-behavior.html">
@@ -48,63 +55,110 @@ admin-userws) that don't cleanly factor through a behavior.
         border-style: solid;
         border-color: lightgray;
       }
+
+      paper-tabs {
+        --paper-tabs-selection-bar-color: var(--nuxeo-primary-color, #0066ff);
+        background: var(--nuxeo-sidebar-background, #fafafa);
+        border-bottom: 1px solid var(--nuxeo-border, #e3e3e3);
+      }
+
+      paper-tab {
+        --paper-tab-ink: var(--nuxeo-primary-color, #0066ff);
+        text-transform: uppercase;
+        font-size: 0.85rem;
+      }
+
+      .usageReminder {
+        padding: 10px 16px;
+        font-weight: 500;
+        border-bottom: 1px solid var(--nuxeo-border, #e3e3e3);
+        background: var(--nuxeo-box, #fff);
+      }
+
+      iron-pages > section {
+        padding-top: 12px;
+      }
     </style>
 
     <nuxeo-operation id="getQuotaOp" op="Quota.GetContainerQuota" response="{{originalQuota}}"></nuxeo-operation>
     <nuxeo-operation id="setQuotaOp" op="Quotas.SetMaxSize"></nuxeo-operation>
 
-    <nuxeo-card heading="[[i18n('adm.quota.statistics')]]">
-      <nuxeo-quota-stats document="[[document]]"></nuxeo-quota-stats>
-    </nuxeo-card>
+    <paper-tabs selected="{{selectedTab}}" attr-for-selected="name" noink>
+      <paper-tab name="stats">[[i18n('label.quota.tab.stats')]]</paper-tab>
+      <paper-tab name="heaviest">[[i18n('label.quota.tab.heaviest')]]</paper-tab>
+    </paper-tabs>
 
     <!--
-      Collapsed by default. We do NOT lazy-stamp via dom-if: <nuxeo-card>
-      declares 'opened' without notify:true, so opened="{{...}}" silently
-      degrades to one-way down — a parent flag would never see the card's
-      internal toggle. Cost: one extra NXQL LIMIT-40 query on page load.
-      See AGENTS.md "UI quirks".
+      Usage reminder — always visible, regardless of the selected tab.
+      Sourced from the existing data: originalQuota.quotaValue (from
+      Quota.GetContainerQuota) for the max, and _usedAnalytics (notified
+      up from <nuxeo-quota-stats>) summed across slices for the used size.
+      No extra round-trip vs. the previous layout.
     -->
-    <nuxeo-card heading="[[i18n('label.quota.heaviest.children')]]" collapsible>
-      <nuxeo-quota-heaviest-list mode="children" document="[[document]]"></nuxeo-quota-heaviest-list>
-    </nuxeo-card>
+    <template is="dom-if" if="[[_showUsageReminder(originalQuota, _usedBytes)]]">
+      <div class="usageReminder">[[_usageReminderText(originalQuota, _usedBytes)]]</div>
+    </template>
 
-    <nuxeo-card heading="[[i18n('action.activate.quota')]]" class="actionCard">
-      <div class="layout horizontal flex">
-        <div class="layout vertical" style="margin-left: 50px">
-          <nuxeo-input id="quotaValueObj"
-                      label="[[i18n('label.quota.maxSize')]]"
-                      type="number"
-                      value="{{quotaValue}}"></nuxeo-input>
-          <template is="dom-if" if="[[!_hasOriginalQuota(originalQuota)]]">
-            (No quota set on this container)
-          </template>
-          <div>
-            Max: [[originalQuota.maxQuotaSizeStr]]
+    <iron-pages selected="[[selectedTab]]" attr-for-selected="name">
+
+      <section name="stats">
+        <nuxeo-card heading="[[i18n('adm.quota.statistics')]]">
+          <!--
+            analytics is notify:true on <nuxeo-quota-stats> so we get the
+            raw sizes here without re-running Quotas.GetStatistics.
+          -->
+          <nuxeo-quota-stats document="[[document]]" analytics="{{_usedAnalytics}}"></nuxeo-quota-stats>
+        </nuxeo-card>
+
+        <nuxeo-card heading="[[i18n('action.activate.quota')]]" class="actionCard">
+          <div class="layout horizontal flex">
+            <div class="layout vertical" style="margin-left: 50px">
+              <nuxeo-input id="quotaValueObj"
+                          label="[[i18n('label.quota.maxSize')]]"
+                          type="number"
+                          value="{{quotaValue}}"></nuxeo-input>
+              <template is="dom-if" if="[[!_hasOriginalQuota(originalQuota)]]">
+                (No quota set on this container)
+              </template>
+              <div>
+                Max: [[originalQuota.maxQuotaSizeStr]]
+              </div>
+            </div>
+
+            <nuxeo-select id="quotaValueObj"
+                          label="Unit"
+                          selected="{{quotaUnit}}"
+                          options="[[getUnitsForDropDown()]]"
+                          style="margin-left: 25px">
+            </nuxeo-select>
+
+            <div>
+              <paper-button id="saveQuota"
+                            disabled
+                            class="secondary"
+                            style="margin-left: 50px;"
+                            on-tap="_saveQuota">Save</paper-button>
+
+              <paper-button id="disableQuota"
+                            disabled
+                            class="secondary"
+                            style="margin-left: 50px;"
+                            on-tap="_disableQuota">Disable Quota</paper-button>
+            </div>
           </div>
-        </div>
-      
-        <nuxeo-select id="quotaValueObj"
-                      label="Unit"
-                      selected="{{quotaUnit}}"
-                      options="[[getUnitsForDropDown()]]"
-                      style="margin-left: 25px">
-        </nuxeo-select>
+        </nuxeo-card>
+      </section>
 
-        <div>
-          <paper-button id="saveQuota"
-                        disabled
-                        class="secondary"
-                        style="margin-left: 50px;"
-                        on-tap="_saveQuota">Save</paper-button>
-          
-          <paper-button id="disableQuota"
-                        disabled
-                        class="secondary"
-                        style="margin-left: 50px;"
-                        on-tap="_disableQuota">Disable Quota</paper-button>
-        </div>
-      </div>
-    </nuxeo-card>
+      <section name="heaviest">
+        <!--
+          No <nuxeo-card collapsible> wrapper here on purpose: the list lives
+          in its own sub-tab, the collapse affordance would be redundant, and
+          the <nuxeo-card> 'opened' quirk (no notify:true) no longer matters.
+        -->
+        <nuxeo-quota-heaviest-list mode="children" document="[[document]]"></nuxeo-quota-heaviest-list>
+      </section>
+
+    </iron-pages>
 
   </template>
 
@@ -128,6 +182,22 @@ admin-userws) that don't cleanly factor through a behavior.
         quotaUnit: {
           type: String,
           value:"MB"
+        },
+        // Active sub-tab. Default: "stats" (pie chart + action card).
+        selectedTab: {
+          type: String,
+          value: "stats"
+        },
+        // Filled by <nuxeo-quota-stats> via two-way binding (analytics is
+        // notify:true). Shape: [{label, data}, ...] — see GetQuotaStatisticsOperation.
+        _usedAnalytics: {
+          type: Array,
+          value: null
+        },
+        // Sum of every slice's raw bytes. Drives the "NNN GB on NNN, NN%" reminder.
+        _usedBytes: {
+          type: Number,
+          computed: "_computeUsedBytes(_usedAnalytics)"
         }
       },
 
@@ -143,6 +213,40 @@ admin-userws) that don't cleanly factor through a behavior.
               this.fire('notify', { message: "An error occured loading the quota for this container.", errorDetails: String(error), duration: 8000 });
             }.bind(this))
         }
+      },
+
+      /*
+       * Usage-reminder helpers. The reminder reuses data already loaded by
+       * the page: originalQuota (from Quota.GetContainerQuota) and the
+       * analytics array notified up by <nuxeo-quota-stats>. No extra op
+       * round-trip vs. the previous (cardless) layout.
+       */
+      _computeUsedBytes: function(analytics) {
+        if (!Array.isArray(analytics)) {
+          return -1;
+        }
+        return analytics.reduce(function(sum, item) {
+          return sum + (item && typeof item.data === "number" ? item.data : 0);
+        }, 0);
+      },
+
+      _showUsageReminder: function(originalQuota, usedBytes) {
+        // Wait for both sources to be ready to avoid a "0 B / 0 B, NaN%" flash.
+        return originalQuota != null && typeof usedBytes === "number" && usedBytes >= 0;
+      },
+
+      _usageReminderText: function(originalQuota, usedBytes) {
+        let used = this.formatBytes(usedBytes);
+        let usedStr = used.value + " " + used.unit;
+        let max = originalQuota ? originalQuota.quotaValue : -1;
+        if (max == null || max <= 0) {
+          return usedStr + " used (no quota set)";
+        }
+        let maxFmt = this.formatBytes(max);
+        let pct = Math.round((usedBytes / max) * 100);
+        // Cap the displayed percentage at 100 for over-quota containers.
+        let pctDisplay = Math.min(pct, 100);
+        return usedStr + " on " + maxFmt.value + " " + maxFmt.unit + ", " + pctDisplay + "%";
       },
 
       _hasOriginalQuota: function(quotaObj) {

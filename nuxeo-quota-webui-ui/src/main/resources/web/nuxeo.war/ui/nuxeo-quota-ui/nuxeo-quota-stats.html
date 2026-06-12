@@ -54,7 +54,10 @@ Contributors:
         },
         analytics: {
           type: Object,
-          value: null
+          value: null,
+          // Notified so nuxeo-quota-for-document can derive the
+          // "used / max, NN%" reminder without re-running Quotas.GetStatistics.
+          notify: true
         },
         defaultChartOptions: {
           type: Object,
