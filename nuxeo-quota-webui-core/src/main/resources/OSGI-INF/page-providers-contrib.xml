@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<component name="nuxeo.quota.webui.page-providers">
+
+  <extension target="org.nuxeo.ecm.platform.query.api.PageProviderService" point="providers">
+
+    <!--
+      Heaviest direct children of a container.
+      Parameter 1: parent document UID (ecm:parentId).
+      The 'dss:totalSize >= 1024' filter mirrors the deprecated JSF content view
+      (nuxeo-jsf-ui-lts/code/nuxeo-quota-web/.../quota-contentviews-contrib.xml)
+      and hides near-empty containers from the listing. Override this XML in your
+      own bundle to tune (e.g. set 0 to show everything).
+    -->
+    <coreQueryPageProvider name="quota_heaviest_children">
+      <pattern>
+        SELECT * FROM Document WHERE
+          ecm:parentId = ?
+          AND ecm:mixinType = 'DocumentsSizeStatistics'
+          AND ecm:isVersion = 0
+          AND ecm:isTrashed = 0
+          AND dss:totalSize &gt;= 1024
+      </pattern>
+      <sort column="dss:totalSize" ascending="false"/>
+      <pageSize>40</pageSize>
+    </coreQueryPageProvider>
+
+    <!--
+      Heaviest containers across a scope (typically the repository root).
+      Parameter 1: scope path (ecm:path STARTSWITH), typically '/'.
+      Same 'dss:totalSize >= 1024' filter as above; same override pattern.
+    -->
+    <coreQueryPageProvider name="quota_heaviest_containers">
+      <pattern>
+        SELECT * FROM Document WHERE
+          ecm:path STARTSWITH ?
+          AND ecm:mixinType = 'DocumentsSizeStatistics'
+          AND ecm:isVersion = 0
+          AND ecm:isTrashed = 0
+          AND dss:totalSize &gt;= 1024
+      </pattern>
+      <sort column="dss:totalSize" ascending="false"/>
+      <pageSize>40</pageSize>
+    </coreQueryPageProvider>
+
+  </extension>
+
+</component>

@@ -6,4 +6,5 @@ Bundle-Version: 1.0.0
 Bundle-Name: nuxeo-quota-webui-core
 Bundle-ManifestVersion: 2
 Bundle-SymbolicName: nuxeo.quota.webui.nuxeo-quota-webui-core;singleton=true
-Nuxeo-Component: OSGI-INF/operations-contrib.xml
+Nuxeo-Component: OSGI-INF/operations-contrib.xml,
+ OSGI-INF/page-providers-contrib.xml

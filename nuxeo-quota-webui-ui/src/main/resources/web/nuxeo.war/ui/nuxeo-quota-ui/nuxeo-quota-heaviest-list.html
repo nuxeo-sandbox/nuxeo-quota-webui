@@ -1,0 +1,269 @@
+<!--
+(C) Copyright 2026 Hyland (http://hyland.com/) and contributors.
+Licensed under the Apache License, Version 2.0 (the 'License');
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+​
+    http://www.apache.org/licenses/LICENSE-2.0
+​
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an 'AS IS' BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+Contributors:
+  Thibaud Arguillere (thibarg)
+-->
+<!--
+  Renders a paginated, sortable listing of the "heaviest" documents based on
+  dss:totalSize, backed by one of the page providers declared in
+  page-providers-contrib.xml.
+
+  mode="children"   -> provider quota_heaviest_children, scoped to the direct
+                       children of [[document]] (params = [document.uid]).
+  mode="containers" -> provider quota_heaviest_containers, scoped to a path
+                       (params = ["/"] by default; override via 'scope-path').
+
+  Note: NOT lazy. The embedding <nuxeo-card collapsible> only animates
+  visibility; <nuxeo-card>'s 'opened' has no notify:true so we can't gate
+  this element via dom-if without losing the toggle. The page-provider
+  query therefore fires on page load even when the parent card is closed.
+-->
+<link rel="import" href="nuxeo-quota-behavior.html">
+<dom-module id="nuxeo-quota-heaviest-list">
+  <template>
+    <style include="iron-flex iron-flex-alignment nuxeo-styles">
+      :host {
+        display: block;
+      }
+
+      .results {
+        @apply --layout-vertical;
+        @apply --layout-flex;
+        min-height: 200px;
+      }
+
+      .ellipsis {
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+        display: block;
+        width: 100%;
+      }
+
+      .empty {
+        padding: 12px;
+        font-style: italic;
+        color: gray;
+      }
+    </style>
+
+    <nuxeo-page-provider id="nxProvider"
+                         auto
+                         provider="[[_providerName(mode)]]"
+                         page-size="40"
+                         params="[[params]]"
+                         schemas="dublincore,common,uid,documents_size_statistics"
+                         headers='{"X-NXfetch-document": "properties", "X-NXtranslate-directoryEntry": "label"}'>
+    </nuxeo-page-provider>
+
+    <nuxeo-results id="results" display-mode="table"
+                   name="[[_resultsName(mode, document)]]"
+                   nx-provider="[[nxProvider]]"
+                   selected-items="{{selectedItems}}"
+                   document="[[document]]"
+                   display-sort="[[_canSort(document, sortOptions)]]"
+                   sort-options="[[sortOptions]]"
+                   role="widget">
+
+      <nuxeo-data-table role="widget" settings-enabled="true" class="results"
+                        selection-enabled multi-selection
+                        on-row-clicked="_navigate"
+                        empty-label="[[i18n('label.quota.empty.heaviest')]]"
+                        icon="nuxeo:view-list" name="table">
+
+        <nuxeo-data-table-column name="[[i18n('label.quota.title')]]"
+                                 field="dc:title" sort-by="dc:title" flex="200">
+          <template>
+            <a class="title ellipsis" href$="[[urlFor('browse', item.path)]]" on-tap="_navigate">
+              [[item.title]]
+            </a>
+          </template>
+        </nuxeo-data-table-column>
+
+        <template is="dom-if" if="[[_isChildren(mode)]]">
+          <nuxeo-data-table-column name="[[i18n('label.quota.created')]]"
+                                   field="dc:created" sort-by="dc:created" flex="120">
+            <template>
+              <nuxeo-date datetime="[[item.properties.dc:created]]"></nuxeo-date>
+            </template>
+          </nuxeo-data-table-column>
+
+          <nuxeo-data-table-column name="[[i18n('label.quota.lastContributor')]]"
+                                   field="dc:lastContributor" sort-by="dc:lastContributor" flex="120">
+            <template>
+              <nuxeo-user-tag user="[[item.properties.dc:lastContributor]]"></nuxeo-user-tag>
+            </template>
+          </nuxeo-data-table-column>
+        </template>
+
+        <template is="dom-if" if="[[_isContainers(mode)]]">
+          <nuxeo-data-table-column name="[[i18n('label.quota.path')]]"
+                                   field="ecm:path" flex="200">
+            <template>
+              <span class="ellipsis">[[item.path]]</span>
+            </template>
+          </nuxeo-data-table-column>
+        </template>
+
+        <nuxeo-data-table-column name="[[i18n('label.quota.totalSize')]]"
+                                 field="dss:totalSize" sort-by="dss:totalSize" flex="100">
+          <template>
+            [[_formatBytes(item.properties.dss:totalSize)]]
+          </template>
+        </nuxeo-data-table-column>
+
+        <template is="dom-if" if="[[_isContainers(mode)]]">
+          <nuxeo-data-table-column name="[[i18n('label.quota.maxSize')]]"
+                                   field="dss:maxSize" sort-by="dss:maxSize" flex="100">
+            <template>
+              [[_formatMaxSize(item.properties.dss:maxSize)]]
+            </template>
+          </nuxeo-data-table-column>
+        </template>
+
+      </nuxeo-data-table>
+    </nuxeo-results>
+
+  </template>
+
+  <script>
+    Polymer({
+      is: 'nuxeo-quota-heaviest-list',
+      behaviors: [
+        Nuxeo.LayoutBehavior,
+        Nuxeo.I18nBehavior,
+        Nuxeo.RoutingBehavior,
+        Nuxeo.FiltersBehavior,
+        Nuxeo.QuotaBehavior
+      ],
+      properties: {
+        /**
+         * "children" or "containers".
+         */
+        mode: {
+          type: String,
+          value: "children"
+        },
+        /**
+         * Required when mode === "children". The container whose direct
+         * children we list.
+         */
+        document: {
+          type: Object
+        },
+        /**
+         * Optional scope path for mode === "containers". Defaults to "/".
+         */
+        scopePath: {
+          type: String,
+          value: "/"
+        },
+        /**
+         * Positional query params for the page provider. Computed from
+         * mode + document + scopePath.
+         */
+        params: {
+          type: Array,
+          computed: "_computeParams(mode, document, scopePath)"
+        },
+        selectedItems: {
+          type: Array,
+          notify: true
+        },
+        sortOptions: {
+          type: Array,
+          value: function () {
+            return [
+              { field: "dss:totalSize", label: "Total Size", order: "desc", selected: true },
+              { field: "dc:title",      label: "Title",      order: "asc" }
+            ];
+          }
+        },
+        // <nuxeo-results> reads nx-provider="[[nxProvider]]". Upstream listings
+        // that mix in Nuxeo.DocumentContentBehavior get this wired automatically
+        // in its attached() (this.nxProvider = this.pageProvider). We don't use
+        // that behavior (it would overwrite our positional `params`), so we wire
+        // it ourselves in our own attached() below. Without this, <nuxeo-results>
+        // receives undefined and <nuxeo-data-table>.fetch() returns undefined,
+        // crashing <nuxeo-results> with "Cannot read properties of undefined
+        // (reading 'then')" and leaving the list empty.
+        nxProvider: {
+          type: Object
+        }
+      },
+
+      attached: function () {
+        this.nxProvider = this.$.nxProvider;
+      },
+
+      _providerName: function (mode) {
+        return mode === "containers" ? "quota_heaviest_containers" : "quota_heaviest_children";
+      },
+
+      _isChildren: function (mode) {
+        return mode !== "containers";
+      },
+
+      _isContainers: function (mode) {
+        return mode === "containers";
+      },
+
+      _resultsName: function (mode, document) {
+        if (mode === "containers") {
+          return "quota-heaviest-containers";
+        }
+        return "quota-heaviest-children-" + (document && document.uid ? document.uid : "none");
+      },
+
+      _computeParams: function (mode, document, scopePath) {
+        if (mode === "containers") {
+          return [scopePath || "/"];
+        }
+        // children mode requires a document
+        if (document && document.uid) {
+          return [document.uid];
+        }
+        // Return null so the page provider does not fire with an invalid query.
+        return null;
+      },
+
+      _formatBytes: function (bytes) {
+        if (bytes == null || bytes <= 0) {
+          return "0 B";
+        }
+        var formatted = this.formatBytes(bytes);
+        return formatted.value + " " + formatted.unit;
+      },
+
+      _formatMaxSize: function (bytes) {
+        if (bytes == null || bytes <= 0) {
+          return this.i18n("label.quota.unlimited");
+        }
+        return this._formatBytes(bytes);
+      },
+
+      _canSort: function (document, options) {
+        return Array.isArray(options) && options.length > 0;
+      },
+
+      _navigate: function (e) {
+        this.fire("navigate", { doc: (e.model || e.detail).item });
+        if (e.stopPropagation) {
+          e.stopPropagation();
+        }
+      }
+    });
+  </script>
+</dom-module>

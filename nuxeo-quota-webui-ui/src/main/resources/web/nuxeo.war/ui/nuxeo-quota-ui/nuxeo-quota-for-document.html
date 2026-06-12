@@ -23,6 +23,7 @@ and source-of-truth properties (originalQuota here, quotaConfig in
 admin-userws) that don't cleanly factor through a behavior.
 -->
 <link rel="import" href="nuxeo-quota-stats.html">
+<link rel="import" href="nuxeo-quota-heaviest-list.html">
 <link rel="import" href="nuxeo-quota-behavior.html">
 <dom-module id="nuxeo-quota-for-document">
   <template>
@@ -54,6 +55,17 @@ admin-userws) that don't cleanly factor through a behavior.
 
     <nuxeo-card heading="[[i18n('adm.quota.statistics')]]">
       <nuxeo-quota-stats document="[[document]]"></nuxeo-quota-stats>
+    </nuxeo-card>
+
+    <!--
+      Collapsed by default. We do NOT lazy-stamp via dom-if: <nuxeo-card>
+      declares 'opened' without notify:true, so opened="{{...}}" silently
+      degrades to one-way down — a parent flag would never see the card's
+      internal toggle. Cost: one extra NXQL LIMIT-40 query on page load.
+      See AGENTS.md "UI quirks".
+    -->
+    <nuxeo-card heading="[[i18n('label.quota.heaviest.children')]]" collapsible>
+      <nuxeo-quota-heaviest-list mode="children" document="[[document]]"></nuxeo-quota-heaviest-list>
     </nuxeo-card>
 
     <nuxeo-card heading="[[i18n('action.activate.quota')]]" class="actionCard">

@@ -15,6 +15,7 @@ limitations under the License.
 Contributors:
   Thibaud Arguillere (thibarg)
 -->
+<link rel="import" href="nuxeo-quota-behavior.html">
 <dom-module id="nuxeo-quota-stats">
   <template>
     <style include="iron-flex iron-flex-alignment nuxeo-styles">
@@ -45,7 +46,7 @@ Contributors:
   <script>
     Polymer({
       is: 'nuxeo-quota-stats',
-      behaviors: [Nuxeo.LayoutBehavior],
+      behaviors: [Nuxeo.LayoutBehavior, Nuxeo.QuotaBehavior],
       properties: {
         document: {
           type: Object,
@@ -70,6 +71,17 @@ Contributors:
             return [
               '#3366cc', '#ff9900', '#dc3912', '#109618', '#990099', '#0099c6', '#dd4477', '#66aa00'
             ];
+          }
+        },
+
+        // Hardcoded English names for the pie-chart slices, matched by index
+        // to the upstream order in GetQuotaStatisticsOperation.toJSON()
+        // (liveSize, trashSize, sizeVersions). Kept hardcoded so the legend
+        // stays locale-independent.
+        _SIZE_LABELS: {
+          type: Array,
+          value: function () {
+            return ["Live Documents", "Trash", "Archived Versions"];
           }
         }
       },
@@ -120,22 +132,23 @@ Contributors:
           };
           op.execute()
             .then(function(result) {
-              /* See GetQuotaStatisticsOperation java code. We recevie sometuing like:
- [
-  {
-    "label": "Live Documents Size:2.16 MBytes",
-    "data": 2261560
-  },
-  {
-    "label": "Trash Size:0 KBytes",
-    "data": 0
-  },
-  {
-    "label": "Archived Versions Size:0 KBytes",
-    "data": 0
-  }
-]
-*/
+              /*
+               * See GetQuotaStatisticsOperation java code. Since LTS 2025.11 we
+               * receive something like:
+               * [
+               *   { "label": "Live Documents Size:2.16 GibiBytes",     "data": 2319461990 },
+               *   { "label": "Trash Size:0 KibiBytes",                  "data": 0 },
+               *   { "label": "Archived Versions Size:0 KibiBytes",      "data": 0 }
+               * ]
+               * The unit part (KibiBytes/MebiBytes/GibiBytes) comes from
+               * QuotaDisplayValue.format() resolving i18n keys label.unit.KiB /
+               * MiB / GiB. We ignore obj.label entirely and rebuild the legend
+               * from obj.data (raw bytes) + a hardcoded _SIZE_LABELS array
+               * (matched by index to the upstream order in
+               * GetQuotaStatisticsOperation.toJSON()), so labels and units stay
+               * locale-independent. If a future LTS version adds a 4th stat,
+               * the legend will show "Item 4 (...)" — extend _SIZE_LABELS.
+               */
               this.analytics = result;
             }.bind(this))
             .catch(function(err) {
@@ -151,8 +164,14 @@ Contributors:
         }
 
         if(what === "labels") {
-          // Just a quick format for fun
-          return analytics.map((obj) => obj.label.replace(" Size:", " (") + ")");
+          // Hardcoded English names, matched by index to upstream
+          // GetQuotaStatisticsOperation.toJSON() order. Units come from
+          // formatBytes() (B/KB/MB/GB), so the legend is locale-independent.
+          return analytics.map((obj, i) => {
+            let name = this._SIZE_LABELS[i] || ("Item " + (i + 1));
+            let formatted = this.formatBytes(obj.data);
+            return name + " (" + formatted.value + " " + formatted.unit + ")";
+          });
         }
 
         if(what === "values") {

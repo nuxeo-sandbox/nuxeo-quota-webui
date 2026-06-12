@@ -36,5 +36,11 @@
   "label.quotaException.QuotaCanNotBeSet": " Maximum size of a parent will be exceeded. Choose a smaller size or reduce maximum size of other space.",
   "label.quota.info.used": "Used:",
   "label.quota.info.available": "Allowed:",
-  "label.quota.error.display": "Cannot display statistics. Please run initial computation from Admin / Quota."
+  "label.quota.error.display": "Cannot display statistics. Please run initial computation from Admin / Quota.",
+  "label.quota.heaviest.children": "Heaviest sub-folders",
+  "label.quota.heaviest.containers": "Heaviest containers",
+  "label.quota.title": "Title",
+  "label.quota.created": "Created",
+  "label.quota.lastContributor": "Last Contributor",
+  "label.quota.empty.heaviest": "Nothing to show. Run the initial quota computation from the admin center."
 }
