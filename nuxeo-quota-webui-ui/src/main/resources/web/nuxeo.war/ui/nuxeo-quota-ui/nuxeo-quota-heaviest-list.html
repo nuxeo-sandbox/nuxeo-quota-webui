@@ -60,7 +60,6 @@ Contributors:
     </style>
 
     <nuxeo-page-provider id="nxProvider"
-                         auto
                          provider="[[_providerName(mode)]]"
                          page-size="40"
                          params="[[params]]"
@@ -204,8 +203,32 @@ Contributors:
         }
       },
 
+      observers: [
+        "_paramsChanged(params)"
+      ],
+
       attached: function () {
         this.nxProvider = this.$.nxProvider;
+      },
+
+      /*
+       * Refresh the table whenever `params` change (e.g. user navigates from
+       * one container to another while the quota tab is open). We do NOT use
+       * <nuxeo-page-provider auto>: it would re-fetch on params change, but
+       * <nuxeo-data-table> only replaces its `items` array via its own
+       * _fetchPage(1, ...) path. Without going through that path, the
+       * provider's update event only refreshes `size` and the table still
+       * displays the previous container's rows. Routing the fetch through
+       * <nuxeo-results>.fetch() -> <nuxeo-data-table>.fetch() -> _fetchPage(1)
+       * guarantees `items` is replaced.
+       */
+      _paramsChanged: function (params) {
+        if (!params) {
+          return;
+        }
+        if (this.$.results && typeof this.$.results.fetch === "function") {
+          this.$.results.fetch();
+        }
       },
 
       _providerName: function (mode) {
