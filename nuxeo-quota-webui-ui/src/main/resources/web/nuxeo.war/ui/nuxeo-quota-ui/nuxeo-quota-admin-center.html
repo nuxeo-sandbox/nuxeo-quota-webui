@@ -45,6 +45,21 @@ Contributors:
       .info {
         font-size: smaller;
       }
+
+      paper-tabs {
+        background: #f5f5f5;
+        --paper-tabs-selection-bar-color: #0066cc;
+        margin-bottom: 16px;
+      }
+
+      paper-tab {
+        --paper-tab-ink: #0066cc;
+        font-weight: 600;
+      }
+
+      iron-pages > section {
+        padding-top: 12px;
+      }
     </style>
 
     <nuxeo-document id="rootDoc" doc-path="/" response="{{rootDoc}}" auto></nuxeo-document>
@@ -53,52 +68,69 @@ Contributors:
     <nuxeo-operation id="getStatusOp" op="Quota.GetStatus" auto response="{{status}}"></nuxeo-operation>
     <nuxeo-operation id="launchInitialComputationOp" op="Quota.LaunchInitialComputation"></nuxeo-operation>
 
-    <nuxeo-card heading="[[i18n('adm.quota.statistics')]]">
-      <!-- Stats -->
-      <nuxeo-quota-stats document="[[rootDoc]]"></nuxeo-quota-stats>
+    <nuxeo-page>
+      
+      <div slot="header">
+        <span>Quotas/Statistics</span>
+      </div>
 
-      <!-- User Workspaces -->
-      <nuxeo-quota-admin-userws></nuxeo-quota-admin-userws>
+      <paper-tabs selected="{{selectedTab}}" attr-for-selected="name" noink>
+        <paper-tab name="stats">[[i18n('label.quota.tab.stats')]]</paper-tab>
+        <paper-tab name="heaviest">[[i18n('label.quota.admin.tab.heaviest')]]</paper-tab>
+      </paper-tabs>
 
-      <!-- Start stats -->
-      <nuxeo-card heading="[[i18n('adm.quota.compute.initial.statistics')]]" class="actionCard">
-        <div class="info">
-          [[i18n('label.quota.admin.help')]]
-        </div>
-        <div class="layout horizontal">
-          <template is="dom-if" if="[[_hasUpdatersInfo(updaters, status)]]">
-            <dom-repeat items="{{updatersInfo}}">
-              <template>
-                <nuxeo-card>
-                  <!-- Adding idx for later use, in the _computeInitialStatistics function. -->
-                  <paper-button class="secondary" on-tap="_computeInitialStatistics" id="[[item.name]]" idx="[[itemsIndex]]">
-                    [[i18n(item.label)]]
-                  </paper-button>
-                  <div class="actionInfo">
-                    [[i18n(item.description)]]
-                  </div>
-                  <div class="status">
-                    Status: <nuxeo-tag>[[i18n(item.status)]]</nuxeo-tag>
-                  </div>
-                </nuxeo-card>
-              </template>
-            </dom-repeat>
-          </template>
-        </div>
-      </nuxeo-card>
-    </nuxeo-card>
+      <iron-pages selected="[[selectedTab]]" attr-for-selected="name">
 
-    <!--
-      Collapsed by default. We do NOT lazy-stamp via dom-if: <nuxeo-card>
-      declares 'opened' without notify:true, so opened="{{...}}" silently
-      degrades to one-way down — a parent flag would never see the card's
-      internal toggle. Cost: one extra NXQL LIMIT-40 query on page load.
-      See AGENTS.md "UI quirks".
-    -->
-    <nuxeo-card heading="[[i18n('label.quota.heaviest.containers')]]" collapsible>
-      <nuxeo-quota-heaviest-list mode="containers"></nuxeo-quota-heaviest-list>
-    </nuxeo-card>
+        <section name="stats">
+          <nuxeo-card heading="[[i18n('adm.quota.statistics')]]">
+            <!-- Stats -->
+            <nuxeo-quota-stats document="[[rootDoc]]"></nuxeo-quota-stats>
 
+            <!-- User Workspaces -->
+            <nuxeo-quota-admin-userws></nuxeo-quota-admin-userws>
+
+            <!-- Start stats -->
+            <nuxeo-card heading="[[i18n('adm.quota.compute.initial.statistics')]]" class="actionCard">
+              <div class="info">
+                [[i18n('label.quota.admin.help')]]
+              </div>
+              <div class="layout horizontal">
+                <template is="dom-if" if="[[_hasUpdatersInfo(updaters, status)]]">
+                  <dom-repeat items="{{updatersInfo}}">
+                    <template>
+                      <nuxeo-card>
+                        <!-- Adding idx for later use, in the _computeInitialStatistics function. -->
+                        <paper-button class="secondary" on-tap="_computeInitialStatistics" id="[[item.name]]" idx="[[itemsIndex]]">
+                          [[i18n(item.label)]]
+                        </paper-button>
+                        <div class="actionInfo">
+                          [[i18n(item.description)]]
+                        </div>
+                        <div class="status">
+                          Status: <nuxeo-tag>[[i18n(item.status)]]</nuxeo-tag>
+                        </div>
+                      </nuxeo-card>
+                    </template>
+                  </dom-repeat>
+                </template>
+              </div>
+            </nuxeo-card>
+          </nuxeo-card>
+        </section>
+
+        <section name="heaviest">
+          <!--
+            No <nuxeo-card collapsible> wrapper here on purpose: the list lives
+            in its own tab, so the collapse affordance would be redundant — and
+            this also dodges the <nuxeo-card> 'opened' / notify:true quirk
+            (see AGENTS.md "UI quirks").
+          -->
+          <nuxeo-quota-heaviest-list mode="containers"></nuxeo-quota-heaviest-list>
+        </section>
+
+      </iron-pages>
+
+    </nuxeo-page>
   </template>
 
   <script>
@@ -115,7 +147,12 @@ Contributors:
           observer: "_statusChanged"
         },
         updatersInfo: Array,
-        rootDoc: Object
+        rootDoc: Object,
+        // Active sub-tab. Default: "stats" (pie chart + user WS + initial computation).
+        selectedTab: {
+          type: String,
+          value: "stats"
+        }
       },
 
       _hasUpdatersInfo: function(updaters, status) {

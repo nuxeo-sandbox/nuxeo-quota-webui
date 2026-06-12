@@ -25,10 +25,11 @@ Contributors:
   mode="containers" -> provider quota_heaviest_containers, scoped to a path
                        (params = ["/"] by default; override via 'scope-path').
 
-  Note: NOT lazy. The embedding <nuxeo-card collapsible> only animates
-  visibility; <nuxeo-card>'s 'opened' has no notify:true so we can't gate
-  this element via dom-if without losing the toggle. The page-provider
-  query therefore fires on page load even when the parent card is closed.
+  Note: NOT lazy. Both callers render this element inside a <section> of an
+  <iron-pages>, which keeps it in the DOM even when its tab is not active.
+  The page-provider query therefore fires on attach, before the user ever
+  selects the "heaviest" tab. See Possible-Improvements.md for a dom-if
+  gating idea.
 -->
 <link rel="import" href="nuxeo-quota-behavior.html">
 <dom-module id="nuxeo-quota-heaviest-list">

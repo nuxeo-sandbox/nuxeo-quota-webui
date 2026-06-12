@@ -31,21 +31,25 @@ hardcoded too. If multi-language support is needed later, switch to passing
 `language` to `Quotas.GetStatistics` and reading `obj.label` split on `:`.
 
 ### Loading indicator on the "heaviest" listings
-When opening the collapsible card, the page-provider query may take a moment on
-large repositories. No spinner is currently shown — the table just renders empty
-until results arrive. Add a `<paper-spinner>` or rely on `<nuxeo-results>`'s
-built-in loading state if it exposes one.
+The page-provider query may take a moment on large repositories. No spinner is
+currently shown — the table just renders empty until results arrive. Add a
+`<paper-spinner>` or rely on `<nuxeo-results>`'s built-in loading state if it
+exposes one.
 
 ### True lazy-load on the "heaviest" listings
-Currently the page provider fires its query as soon as the page renders, even
-when the card is collapsed (single `LIMIT 40` NXQL, cheap but not free). Reason:
-`<nuxeo-card>` does not declare `notify: true` on its `opened` property
-(`nuxeo-elements/ui/widgets/nuxeo-card.js:180-184`), so we can't gate a
-`<template is="dom-if">` on the card's state via two-way binding without losing
-the toggle (the parent flag never receives the change, the `dom-if` never
-restamps, and the card appears to do nothing on click). Two fixes possible:
-either patch `<nuxeo-card>` upstream to add `notify: true` on `opened` (Web UI
-PR), or wrap the listing in our own collapse element with a custom header.
+Both UIs render the heaviest list inside a `<section>` of an `<iron-pages>`,
+which keeps the section in the DOM even when the sibling "stats" tab is the
+active one. The page provider therefore fires its query on attach, before the
+user ever clicks the "heaviest" tab (single `LIMIT 40` NXQL, cheap but not
+free). Cheapest fix: wrap each `<section>` body in a `<template is="dom-if"
+if="[[_isHeaviestTab(selectedTab)]]">` so the inner `<nuxeo-quota-heaviest-list>`
+only stamps when its tab is selected. (Historical note: the admin center
+previously used `<nuxeo-card collapsible>` for this listing. Lazy-loading via
+`dom-if` gated on `opened` didn't work because `<nuxeo-card>` does not declare
+`notify: true` on its `opened` property — see
+`nuxeo-elements/ui/widgets/nuxeo-card.js:180-184` — so two-way binding
+silently degraded to one-way down, the `dom-if` never restamped, and the card
+appeared to do nothing on click. The sub-tab refactor removed this constraint.)
 
 ## Backend / Operations
 

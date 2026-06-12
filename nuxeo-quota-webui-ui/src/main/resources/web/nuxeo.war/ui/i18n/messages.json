@@ -44,5 +44,6 @@
   "label.quota.lastContributor": "Last Contributor",
   "label.quota.empty.heaviest": "Nothing to show. Run the initial quota computation from the admin center.",
   "label.quota.tab.stats": "Statistics",
-  "label.quota.tab.heaviest": "Heaviest sub-folders"
+  "label.quota.tab.heaviest": "Heaviest sub-folders",
+  "label.quota.admin.tab.heaviest": "Heaviest containers"
 }
